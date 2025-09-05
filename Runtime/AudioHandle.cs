@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace AudioSystem
+namespace Tiko.AudioSystem
 {
     public struct AudioHandle
     {

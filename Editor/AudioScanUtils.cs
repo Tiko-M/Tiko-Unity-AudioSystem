@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace AudioSystem.EditorTools
+namespace Tiko.AudioSystem.EditorTools
 {
     internal static class AudioScanUtils
     {

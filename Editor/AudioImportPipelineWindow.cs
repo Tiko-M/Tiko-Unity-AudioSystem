@@ -4,7 +4,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace AudioSystem.EditorTools
+namespace Tiko.AudioSystem.EditorTools
 {
     public class AudioImportPipelineWindow : EditorWindow
     {
@@ -35,6 +35,8 @@ namespace AudioSystem.EditorTools
         {
 
             EditorGUILayout.LabelField("Audio Import Pipeline", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField($"Root: {_config.cuesRoot}", EditorStyles.miniLabel);
+
             EditorGUILayout.Space();
 
             _config = (AudioImportConfig)EditorGUILayout.ObjectField("Config", _config, typeof(AudioImportConfig), false);
@@ -55,7 +57,27 @@ namespace AudioSystem.EditorTools
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Settings", EditorStyles.boldLabel);
-            _config.cuesRoot = EditorGUILayout.TextField("Cues Root", _config.cuesRoot);
+            var currentFolderObj = string.IsNullOrEmpty(_config.cuesRoot)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<DefaultAsset>(_config.cuesRoot);
+            var newFolderObj = (DefaultAsset)EditorGUILayout.ObjectField("Cues Root", currentFolderObj, typeof(DefaultAsset), false);
+            if (newFolderObj != null)
+            {
+                var p = AssetDatabase.GetAssetPath(newFolderObj);
+                if (AssetDatabase.IsValidFolder(p) && _config.cuesRoot != p)
+                {
+                    _config.cuesRoot = p;
+                    EditorUtility.SetDirty(_config);
+                }
+            }
+            bool hasValidRoot = !string.IsNullOrEmpty(_config.cuesRoot) && AssetDatabase.IsValidFolder(_config.cuesRoot);
+            if (!hasValidRoot)
+            {
+                EditorGUILayout.HelpBox("Chưa chọn thư mục audio gốc (Cues Root). Hãy kéo-thả một folder trong Assets vào ô trên để tiếp tục.", MessageType.Warning);
+                return;
+            }
+
+
             _config.enumFilePath = EditorGUILayout.TextField("Enum File Path", _config.enumFilePath);
             _config.targetLibrary = (AudioLibrary)EditorGUILayout.ObjectField("Audio Library", _config.targetLibrary, typeof(AudioLibrary), false);
 
@@ -63,11 +85,15 @@ namespace AudioSystem.EditorTools
 
             if (GUILayout.Button("Generate Enum + Sync Library"))
             {
-                // 1) Generate enum ngay
+                if (!AssetDatabase.IsValidFolder(_config.cuesRoot))
+                {
+                    Debug.LogWarning($"[AudioPipeline] Cues Root không hợp lệ: '{_config.cuesRoot}'. Hãy chọn lại.");
+                    return;
+                }
+
                 var keys = AudioScanUtils.ScanCueFolders(_config, out var _);
                 AudioEnumGenerator.GenerateEnum(_config, keys);
 
-                // 2) Yêu cầu refresh & chờ compile + reload
                 var cfgPath = AssetDatabase.GetAssetPath(_config);
                 SessionState.SetBool("AudioPipeline_PendingSync", true);
                 SessionState.SetString("AudioPipeline_ConfigPath", cfgPath);
@@ -138,7 +164,7 @@ namespace AudioSystem.EditorTools
                 if (keyProp == null || clipsProp == null) continue;
 
                 int keyVal = keyProp.intValue;
-                string keyName = System.Enum.GetName(typeof(EAudio), keyVal) ?? $"#{keyVal}";
+                string keyName = System.Enum.GetName(typeof(string), keyVal) ?? $"#{keyVal}";
 
                 int clipCount = Mathf.Max(0, clipsProp.arraySize);
 
@@ -176,7 +202,7 @@ namespace AudioSystem.EditorTools
 
                     EditorGUI.indentLevel++;
                     EditorGUI.BeginDisabledGroup(true);
-                    EditorGUILayout.EnumPopup("Key", (Enum)Enum.ToObject(typeof(EAudio), keyVal));
+                    EditorGUILayout.EnumPopup("Key", (Enum)Enum.ToObject(typeof(string), keyVal));
                     EditorGUI.EndDisabledGroup();
 
                     if (clipCount == 0)

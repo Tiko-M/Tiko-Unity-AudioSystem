@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace AudioSystem.EditorTools
+namespace Tiko.AudioSystem.EditorTools
 {
     internal static class AudioLibrarySync
     {
@@ -27,18 +27,12 @@ namespace AudioSystem.EditorTools
             }
 
             // Build danh sách MỚI từ scan (Remove Missing = ON)
-            var newData = new List<(EAudio key, string token, AudioClip[] clips)>();
+            var newData = new List<(string key, string token, AudioClip[] clips)>();
 
             foreach (var kv in locationToKey)
             {
                 string location = kv.Key;
                 string token = kv.Value;
-
-                if (!System.Enum.TryParse<EAudio>(token, out var key))
-                {
-                    Debug.LogWarning($"[AudioLibrarySync] Bỏ qua: không parse được enum '{token}'");
-                    continue;
-                }
 
                 AudioClip[] clips;
                 if (AssetDatabase.IsValidFolder(location))
@@ -58,7 +52,7 @@ namespace AudioSystem.EditorTools
                     clips = (clip != null) ? new[] { clip } : System.Array.Empty<AudioClip>();
                 }
 
-                newData.Add((key, token, clips));
+                newData.Add((token, token, clips));
             }
 
             // Ghi list bằng SerializedObject
@@ -81,15 +75,12 @@ namespace AudioSystem.EditorTools
                 var clipsProp = el.FindPropertyRelative("clips");
                 var nameProp = el.FindPropertyRelative("name"); // <-- field bạn mới thêm
 
-                if (keyProp != null)
-                    keyProp.intValue = (int)newData[i].key;
 
                 // key
                 if (keyProp != null)
                 {
                     var names = keyProp.enumDisplayNames;
                     int idx = System.Array.IndexOf(names, newData[i].key.ToString());
-                    keyProp.enumValueIndex = (idx >= 0) ? idx : (int)newData[i].key;
                 }
 
                 // name (nếu có)

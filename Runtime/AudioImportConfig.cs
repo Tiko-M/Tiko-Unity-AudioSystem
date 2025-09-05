@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AudioSystem
+namespace Tiko.AudioSystem
 {
     [CreateAssetMenu(menuName = "Audio/Audio Import Config", fileName = "AudioImportConfig")]
     public class AudioImportConfig : ScriptableObject

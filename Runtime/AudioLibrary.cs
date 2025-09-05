@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AudioSystem
+namespace Tiko.AudioSystem
 {
     [CreateAssetMenu(menuName = "Audio/Audio Library", fileName = "AudioLibrary")]
     public class AudioLibrary : ScriptableObject
     {
         [SerializeField] private List<AudioData> audioList = new List<AudioData>();
-        private Dictionary<EAudio, AudioData> _map;
+        private Dictionary<string, AudioData> _map;
 
         private void OnEnable()
         {
@@ -17,7 +17,7 @@ namespace AudioSystem
         [ContextMenu("Rebuild Map")]
         public void BuildMap()
         {
-            _map = new Dictionary<EAudio, AudioData>(audioList.Count);
+            _map = new Dictionary<string, AudioData>(audioList.Count);
             foreach (var data in audioList)
             {
                 if (data == null) continue;
@@ -29,7 +29,7 @@ namespace AudioSystem
             }
         }
 
-        public AudioData GetAudioData(EAudio key)
+        public AudioData GetAudioData(string key)
         {
             if (_map == null || _map.Count == 0) BuildMap();
             return _map != null && _map.TryGetValue(key, out var data) ? data : null;
@@ -38,7 +38,7 @@ namespace AudioSystem
         [ContextMenu("Validate")]
         public void Validate()
         {
-            var seen = new HashSet<EAudio>();
+            var seen = new HashSet<string>();
             foreach (var d in audioList)
             {
                 if (d == null) continue;

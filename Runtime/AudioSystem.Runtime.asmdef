@@ -1,13 +1,14 @@
 {
-	"name": "AudioSystem.Runtime",
-	"rootNamespace": "AudioSystem",
-  	"references": [],
-  	"includePlatforms": [],
-  	"excludePlatforms": [],
-  	"allowUnsafeCode": false,
-  	"overrideReferences": false,
-  	"precompiledReferences": [],
- 	"autoReferenced": true,
-  	"defineConstraints": [],
-  	"versionDefines": []
+    "name": "AudioSystem.Runtime",
+    "rootNamespace": "Tiko.AudioSystem.Runetime",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

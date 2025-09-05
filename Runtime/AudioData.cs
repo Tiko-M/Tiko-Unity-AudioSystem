@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace AudioSystem
+namespace Tiko.AudioSystem
 {
     [System.Serializable]
     public class AudioData
     {
         public string name;
-        public EAudio key;
+        public string key;
         public AudioClip[] clips;
 
         [Range(0f, 1f)] public float volume = 1f;

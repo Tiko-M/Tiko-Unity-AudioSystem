@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace AudioSystem
+namespace Tiko.AudioSystem
 {
     /// <summary>
     /// Component phụ gắn lên pooled AudioSource để bám theo 1 Transform trong khi phát.

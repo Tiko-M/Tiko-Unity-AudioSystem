@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3e326c370d07f34abf1e35ddc7c513e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  library: {fileID: 11400000, guid: aa72a9b0776442c4aa2be4c3e906b912, type: 2}
+  library: {fileID: 11400000, guid: 847bebcec52d6ea4db9b802c3800329e, type: 2}
   mixer: {fileID: 24100000, guid: 503fd3fb370d6fa48bfff14c218d451b, type: 2}
   musicGroup: {fileID: -1937397641459137615, guid: 503fd3fb370d6fa48bfff14c218d451b, type: 2}
   sfxGroup: {fileID: -8927553444224496420, guid: 503fd3fb370d6fa48bfff14c218d451b, type: 2}
@@ -54,5 +54,6 @@ MonoBehaviour:
   musicA: {fileID: 0}
   musicB: {fileID: 0}
   musicVolume01: 1
+  timeFade: 1
   initialSfxSources: 16
   maxSfxSources: 64

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f38b5f293d59de144b6ff9d27c013f70, type: 3}
   m_Name: AudioImportConfig
   m_EditorClassIdentifier: 
-  cuesRoot: Assets/_ProjectAssets/6.Audio
+  cuesRoot: Assets/Scenes
   enumFilePath: Assets/_ProjectAssets/1.Core/AudioSystem/Scripts/EAudio.cs
   targetLibrary: {fileID: 11400000, guid: 847bebcec52d6ea4db9b802c3800329e, type: 2}
   excludeFolders:

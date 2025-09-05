@@ -7,7 +7,7 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 
-namespace AudioSystem.EditorTools
+namespace Tiko.AudioSystem.EditorTools
 {
     internal static class AudioEnumGenerator
     {

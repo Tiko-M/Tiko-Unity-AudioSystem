@@ -1,17 +1,18 @@
 {
-	"name": "AudioSystem.Editor",
-	"rootNamespace": "AudioSystem.EditorTools",
-	"references": [
-		"AudioSystem.Runtime"
-	],
-	"includePlatforms": [
-		"Editor"
-	],
-	"excludePlatforms": [],
-	"allowUnsafeCode": false,
-	"overrideReferences": false,
-	"precompiledReferences": [],
-	"autoReferenced": true,
-	"defineConstraints": [],
-	"versionDefines": []
+    "name": "AudioSystem.Editor",
+    "rootNamespace": "Tiko.AudioSystem.EditorTools",
+    "references": [
+        "AudioSystem.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

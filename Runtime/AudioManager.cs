@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
 
-namespace AudioSystem
+namespace Tiko.AudioSystem
 {
     public class AudioManager : MonoBehaviour
     {
@@ -34,9 +34,9 @@ namespace AudioSystem
         private readonly Queue<AudioSource> idleSfx = new Queue<AudioSource>();
 
         // Tracking
-        private readonly Dictionary<EAudio, int> activeByType = new Dictionary<EAudio, int>();
-        private readonly Dictionary<AudioSource, EAudio> srcToType = new Dictionary<AudioSource, EAudio>();
-        private readonly Dictionary<EAudio, float> lastPlayedTime = new Dictionary<EAudio, float>();
+        private readonly Dictionary<string, int> activeByType = new Dictionary<string, int>();
+        private readonly Dictionary<AudioSource, string> srcToType = new Dictionary<AudioSource, string>();
+        private readonly Dictionary<string, float> lastPlayedTime = new Dictionary<string, float>();
         // V1.1
         private readonly Dictionary<AudioSource, float> _startedAt = new Dictionary<AudioSource, float>();
 
@@ -78,7 +78,7 @@ namespace AudioSystem
             }
         }
 
-        public void PlayMusic(EAudio key)
+        public void PlayMusic(string key)
         {
             var data = library != null ? library.GetAudioData(key) : null;
             if (data == null)
@@ -323,11 +323,11 @@ namespace AudioSystem
             if (!idleSfx.Contains(src)) idleSfx.Enqueue(src);
         }
 
-        public AudioHandle PlaySFX(EAudio key) => PlaySFXInternal(key, null, null);
-        public AudioHandle PlaySFXAt(EAudio key, Vector3 position) => PlaySFXInternal(key, position, null);
-        public AudioHandle PlaySFXFollow(EAudio key, Transform target) => PlaySFXInternal(key, null, target);
+        public AudioHandle PlaySFX(string key) => PlaySFXInternal(key, null, null);
+        public AudioHandle PlaySFXAt(string key, Vector3 position) => PlaySFXInternal(key, position, null);
+        public AudioHandle PlaySFXFollow(string key, Transform target) => PlaySFXInternal(key, null, target);
 
-        private AudioHandle PlaySFXInternal(EAudio key, Vector3? position, Transform followTarget)
+        private AudioHandle PlaySFXInternal(string key, Vector3? position, Transform followTarget)
         {
             var data = library != null ? library.GetAudioData(key) : null;
 
@@ -460,7 +460,7 @@ namespace AudioSystem
             ReleaseSfxSource(src);
         }
 
-        public void StopSFX(EAudio key)
+        public void StopSFX(string key)
         {
             var toStop = new List<AudioSource>();
             foreach (var kv in srcToType)
@@ -471,7 +471,7 @@ namespace AudioSystem
             activeByType[key] = 0;
         }
 
-        private IEnumerator ReleaseAfter(AudioSource src, EAudio key)
+        private IEnumerator ReleaseAfter(AudioSource src, string key)
         {
             var data = library != null ? library.GetAudioData(key) : null;
             float length = (src != null && src.clip != null) ? src.clip.length : 0f;
