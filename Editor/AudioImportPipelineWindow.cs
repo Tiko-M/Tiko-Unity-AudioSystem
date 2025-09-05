@@ -21,6 +21,8 @@ namespace Tiko.AudioSystem.EditorTools
 
 
         // UI state
+        private bool _defaultExpanded = true; // mặc định: mở hết
+
         private string _cuesRoot;
         private string _enumPath;
         private string _libAssetPath;
@@ -141,8 +143,15 @@ namespace Tiko.AudioSystem.EditorTools
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Collapse All", EditorStyles.toolbarButton, GUILayout.Width(110)))
                 {
-                    _foldouts.Clear();
+                    _defaultExpanded = false;
+                    _foldouts.Clear(); // xoá cache để toàn bộ dùng mặc định mới = collapsed
                 }
+                if (GUILayout.Button("Expand All", EditorStyles.toolbarButton, GUILayout.Width(90)))
+                {
+                    _defaultExpanded = true;
+                    _foldouts.Clear(); // xoá cache để toàn bộ dùng mặc định mới = expanded
+                }
+
             }
 
             using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
@@ -171,7 +180,8 @@ namespace Tiko.AudioSystem.EditorTools
                 {
                     // Header row
                     Rect headerRect = GUILayoutUtility.GetRect(1, 24, GUILayout.ExpandWidth(true));
-                    bool expanded = _foldouts.TryGetValue(keyName, out var ex) ? ex : true;
+                    bool expanded = _foldouts.TryGetValue(keyName, out var ex) ? ex : _defaultExpanded;
+
                     if (GUI.Button(headerRect, GUIContent.none, GUIStyle.none))
                     {
                         expanded = !expanded; GUI.changed = true;
