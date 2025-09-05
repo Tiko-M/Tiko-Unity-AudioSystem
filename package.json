@@ -17,11 +17,5 @@
     "name": "Tiko The Monke",
     "email": "thekittengun@gmail.com"
     },
-    "samples": [
-    {
-    "displayName": "Template",
-    "description": "AudioSystem Template",
-    "path": "Samples~/Template"
-    }
   ]
 }
