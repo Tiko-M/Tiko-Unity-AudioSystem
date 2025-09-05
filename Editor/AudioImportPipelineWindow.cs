@@ -17,6 +17,8 @@ namespace Tiko.AudioSystem.EditorTools
 
         // Session keys dùng cho post-reload
         private const string kPendingSyncKey = "AudioPipeline_PendingSync";
+        private const string kLibPathKey = "Tiko.Audio.LibraryPath";
+
 
         // UI state
         private string _cuesRoot;
@@ -99,7 +101,7 @@ namespace Tiko.AudioSystem.EditorTools
                 // Lưu thông tin cho post-reload
                 SessionState.SetBool(kPendingSyncKey, true);
                 SessionState.SetString(kCuesRootKey, _cuesRoot);         // Root để rescan sau reload
-
+                SessionState.SetString(kLibPathKey, _libAssetPath);
                 AssetDatabase.Refresh();
                 Debug.Log("[AudioPipeline] Enum generated. Waiting for scripts to reload before syncing library...");
             }
