@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,116 +8,122 @@ namespace Tiko.AudioSystem.EditorTools
 {
     public class AudioImportPipelineWindow : EditorWindow
     {
-        private AudioImportConfig _config;
-        private Vector2 _scroll;
-        private readonly Dictionary<int, bool> _foldouts = new();
+        // ===== Settings lưu trong EditorPrefs =====
+        private const string kCuesRootKey = "Tiko.Audio.CuesRoot";
+        private const string kEnumPathKey = "Tiko.Audio.EnumPath";
+        private const string kLibPathKey = "Tiko.Audio.LibraryPath";
+
+        // Mặc định bạn yêu cầu
+        private const string kDefaultEnumPath = "Assets/Tiko/Tiko.AudioSystem/Scripts/EAudio.cs";
+        private const string kDefaultLibPath = "Assets/Tiko/Tiko.AudioSystem/Resources/AudioLibrary.asset";
+
+        // Session keys dùng cho post-reload
+        private const string kPendingSyncKey = "AudioPipeline_PendingSync";
 
         // UI state
-        [SerializeField] private string _search = "";
+        private string _cuesRoot;
+        private string _enumPath;
+        private string _libAssetPath;
+        private string _search = "";
+        private Vector2 _scroll;
+        private readonly Dictionary<string, bool> _foldouts = new();
 
-        [MenuItem("Tools/Tiko/AudioTools")]
+        [MenuItem("Tools/Audio/Import Pipeline")]
         public static void Open() => GetWindow<AudioImportPipelineWindow>("Audio Import Pipeline");
 
         private void OnEnable()
         {
-            if (_config == null)
-            {
-                var guids = AssetDatabase.FindAssets("t:AudioImportConfig");
-                if (guids != null && guids.Length > 0)
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    _config = AssetDatabase.LoadAssetAtPath<AudioImportConfig>(path);
-                }
-            }
+            _cuesRoot = EditorPrefs.GetString(kCuesRootKey, "");
+            _enumPath = EditorPrefs.GetString(kEnumPathKey, kDefaultEnumPath);
+            _libAssetPath = EditorPrefs.GetString(kLibPathKey, kDefaultLibPath);
         }
 
         private void OnGUI()
         {
-
+            // Header
             EditorGUILayout.LabelField("Audio Import Pipeline", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField($"Root: {_config.cuesRoot}", EditorStyles.miniLabel);
-
+            EditorGUILayout.LabelField($"Enum: {_enumPath}", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField($"Library: {_libAssetPath}", EditorStyles.miniLabel);
             EditorGUILayout.Space();
 
-            _config = (AudioImportConfig)EditorGUILayout.ObjectField("Config", _config, typeof(AudioImportConfig), false);
-            if (_config == null)
-            {
-                EditorGUILayout.HelpBox("Tạo AudioImportConfig (Create > Audio > Audio Import Config) rồi gán vào đây.", MessageType.Info);
-                if (GUILayout.Button("Tạo nhanh Config trong Assets"))
-                {
-                    var cfg = ScriptableObject.CreateInstance<AudioImportConfig>();
-                    string path = AssetDatabase.GenerateUniqueAssetPath("Assets/AudioImportConfig.asset");
-                    AssetDatabase.CreateAsset(cfg, path);
-                    AssetDatabase.SaveAssets();
-                    _config = cfg;
-                    Selection.activeObject = cfg;
-                }
-                return;
-            }
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Settings", EditorStyles.boldLabel);
-            var currentFolderObj = string.IsNullOrEmpty(_config.cuesRoot)
-                ? null
-                : AssetDatabase.LoadAssetAtPath<DefaultAsset>(_config.cuesRoot);
+            // ===== Cues Root (bắt buộc kéo-thả) =====
+            var currentFolderObj = string.IsNullOrEmpty(_cuesRoot) ? null : AssetDatabase.LoadAssetAtPath<DefaultAsset>(_cuesRoot);
             var newFolderObj = (DefaultAsset)EditorGUILayout.ObjectField("Cues Root", currentFolderObj, typeof(DefaultAsset), false);
             if (newFolderObj != null)
             {
                 var p = AssetDatabase.GetAssetPath(newFolderObj);
-                if (AssetDatabase.IsValidFolder(p) && _config.cuesRoot != p)
+                if (AssetDatabase.IsValidFolder(p) && _cuesRoot != p)
                 {
-                    _config.cuesRoot = p;
-                    EditorUtility.SetDirty(_config);
+                    _cuesRoot = p;
+                    EditorPrefs.SetString(kCuesRootKey, _cuesRoot);
                 }
             }
-            bool hasValidRoot = !string.IsNullOrEmpty(_config.cuesRoot) && AssetDatabase.IsValidFolder(_config.cuesRoot);
+
+            bool hasValidRoot = !string.IsNullOrEmpty(_cuesRoot) && AssetDatabase.IsValidFolder(_cuesRoot);
             if (!hasValidRoot)
             {
                 EditorGUILayout.HelpBox("Chưa chọn thư mục audio gốc (Cues Root). Hãy kéo-thả một folder trong Assets vào ô trên để tiếp tục.", MessageType.Warning);
-                return;
+                return; // chặn toàn bộ thao tác khi chưa có root
             }
 
-
-            _config.enumFilePath = EditorGUILayout.TextField("Enum File Path", _config.enumFilePath);
-            _config.targetLibrary = (AudioLibrary)EditorGUILayout.ObjectField("Audio Library", _config.targetLibrary, typeof(AudioLibrary), false);
+            // ===== Library asset (Ensure) =====
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Ensure Library", GUILayout.Width(130)))
+                {
+                    var lib = EnsureLibraryAsset(ref _libAssetPath);
+                    EditorPrefs.SetString(kLibPathKey, _libAssetPath);
+                    if (lib != null) Selection.activeObject = lib;
+                }
+            }
 
             EditorGUILayout.Space();
 
+            // ===== Generate Enum + Sync =====
             if (GUILayout.Button("Generate Enum + Sync Library"))
             {
-                if (!AssetDatabase.IsValidFolder(_config.cuesRoot))
+                if (!AssetDatabase.IsValidFolder(_cuesRoot))
                 {
-                    Debug.LogWarning($"[AudioPipeline] Cues Root không hợp lệ: '{_config.cuesRoot}'. Hãy chọn lại.");
+                    Debug.LogWarning($"[AudioPipeline] Cues Root không hợp lệ: '{_cuesRoot}'. Hãy chọn lại.");
                     return;
                 }
 
-                var keys = AudioScanUtils.ScanCueFolders(_config, out var _);
-                AudioEnumGenerator.GenerateEnum(_config, keys);
+                var lib = EnsureLibraryAsset(ref _libAssetPath); // đảm bảo có Library (Resources)
+                if (lib == null)
+                {
+                    Debug.LogError("[AudioPipeline] Không tạo được AudioLibrary. Dừng.");
+                    return;
+                }
 
-                var cfgPath = AssetDatabase.GetAssetPath(_config);
-                SessionState.SetBool("AudioPipeline_PendingSync", true);
-                SessionState.SetString("AudioPipeline_ConfigPath", cfgPath);
+                // Scan -> Generate enum -> Refresh -> post-reload Sync
+                var keys = AudioScanUtils.ScanCueFolders_PathOnly(_cuesRoot, out var _);      // <-- yêu cầu bạn cập nhật chữ ký hàm này
+                AudioEnumGenerator.GenerateEnum_PathOnly(_enumPath, keys);                    // <-- và hàm này
+
+                // Lưu thông tin cho post-reload
+                SessionState.SetBool(kPendingSyncKey, true);
+                SessionState.SetString(kLibPathKey, _libAssetPath);      // Path tới Library để nạp lại
+                SessionState.SetString(kCuesRootKey, _cuesRoot);         // Root để rescan sau reload
+
                 AssetDatabase.Refresh();
                 Debug.Log("[AudioPipeline] Enum generated. Waiting for scripts to reload before syncing library...");
             }
 
-
             EditorGUILayout.Space();
+            DrawLibraryInspector(); // phần UI xem/sửa clips trong Library
+        }
+
+        // ======= Library UI =======
+        private void DrawLibraryInspector()
+        {
+            var lib = AssetDatabase.LoadAssetAtPath<AudioLibrary>(_libAssetPath);
             EditorGUILayout.LabelField("Audio Library – Key & Clips", EditorStyles.boldLabel);
 
-            if (_config.targetLibrary == null)
+            if (lib == null)
             {
-                EditorGUILayout.HelpBox("Chưa chọn Audio Library.", MessageType.Info);
-            }
-            else
-            {
-                DrawKeyAndClipsList(_config.targetLibrary);
+                EditorGUILayout.HelpBox("Library chưa tồn tại. Bấm 'Ensure Library' để tạo.", MessageType.Info);
+                return;
             }
 
-            if (GUI.changed) EditorUtility.SetDirty(_config);
-        }
-        private void DrawKeyAndClipsList(AudioLibrary lib)
-        {
             var so = new SerializedObject(lib);
             var listProp = so.FindProperty("audioList");
             if (listProp == null)
@@ -137,13 +143,7 @@ namespace Tiko.AudioSystem.EditorTools
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Collapse All", EditorStyles.toolbarButton, GUILayout.Width(110)))
                 {
-                    for (int i = 0; i < listProp.arraySize; i++)
-                    {
-                        var elem = listProp.GetArrayElementAtIndex(i);
-                        var keyProp = elem?.FindPropertyRelative("key");
-                        if (keyProp == null) continue;
-                        _foldouts[keyProp.intValue] = false;
-                    }
+                    _foldouts.Clear();
                 }
             }
 
@@ -152,40 +152,34 @@ namespace Tiko.AudioSystem.EditorTools
                 GUILayout.Label("Key", GUILayout.Width(260));
                 GUILayout.Label("Clips (kéo-thả để thay)", GUILayout.ExpandWidth(true));
             }
-            _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
+            _scroll = EditorGUILayout.BeginScrollView(_scroll);
             for (int i = 0; i < listProp.arraySize; i++)
             {
                 var elem = listProp.GetArrayElementAtIndex(i);
                 if (elem == null) continue;
 
-                var keyProp = elem.FindPropertyRelative("key");
-                var clipsProp = elem.FindPropertyRelative("clips");
+                var keyProp = elem.FindPropertyRelative("key");     // string
+                var clipsProp = elem.FindPropertyRelative("clips");   // AudioClip[]
                 if (keyProp == null || clipsProp == null) continue;
 
-                int keyVal = keyProp.intValue;
-                string keyName = System.Enum.GetName(typeof(string), keyVal) ?? $"#{keyVal}";
-
-                int clipCount = Mathf.Max(0, clipsProp.arraySize);
-
-                bool anyNull = false;
-                for (int c = 0; c < clipCount; c++)
-                    anyNull |= clipsProp.GetArrayElementAtIndex(c).objectReferenceValue == null;
+                string keyName = keyProp.stringValue ?? "";
                 if (!string.IsNullOrEmpty(_search) &&
                     keyName.IndexOf(_search, StringComparison.OrdinalIgnoreCase) < 0) continue;
 
+                int clipCount = Mathf.Max(0, clipsProp.arraySize);
+
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
+                    // Header row
                     Rect headerRect = GUILayoutUtility.GetRect(1, 24, GUILayout.ExpandWidth(true));
-
-                    bool expanded = _foldouts.TryGetValue(keyVal, out var ex) ? ex : true;
+                    bool expanded = _foldouts.TryGetValue(keyName, out var ex) ? ex : true;
                     if (GUI.Button(headerRect, GUIContent.none, GUIStyle.none))
                     {
-                        expanded = !expanded;
-                        GUI.changed = true;
+                        expanded = !expanded; GUI.changed = true;
                     }
 
-                    string headerText = keyName;
+                    string headerText = string.IsNullOrEmpty(keyName) ? "<EMPTY>" : keyName;
                     var foldoutStyle = new GUIStyle(EditorStyles.foldoutHeader) { fontStyle = FontStyle.Bold };
                     EditorGUI.Foldout(headerRect, expanded, headerText, true, foldoutStyle);
 
@@ -196,13 +190,12 @@ namespace Tiko.AudioSystem.EditorTools
                     var pillFg = EditorGUIUtility.isProSkin ? new Color(0.67f, 0.83f, 1f, 1f) : new Color(0.10f, 0.22f, 0.40f, 1f);
                     DrawPillRect(pillRect, pillText, pillBg, pillFg);
 
-                    _foldouts[keyVal] = expanded;
-
+                    _foldouts[keyName] = expanded;
                     if (!expanded) continue;
 
                     EditorGUI.indentLevel++;
                     EditorGUI.BeginDisabledGroup(true);
-                    EditorGUILayout.EnumPopup("Key", (Enum)Enum.ToObject(typeof(string), keyVal));
+                    EditorGUILayout.TextField("Key", keyName);
                     EditorGUI.EndDisabledGroup();
 
                     if (clipCount == 0)
@@ -222,7 +215,7 @@ namespace Tiko.AudioSystem.EditorTools
                                 {
                                     clipElem.objectReferenceValue = null;
                                 }
-                                // V1.1 – Preview buttons
+                                // Preview
                                 if (GUILayout.Button("▶", GUILayout.Width(28)))
                                 {
                                     var clip = clipElem.objectReferenceValue as AudioClip;
@@ -232,7 +225,6 @@ namespace Tiko.AudioSystem.EditorTools
                                 {
                                     EditorAudioPreview.StopAll();
                                 }
-
                             }
                         }
                     }
@@ -257,10 +249,39 @@ namespace Tiko.AudioSystem.EditorTools
             GUI.color = old;
         }
 
+        // ===== Helpers =====
+        private static AudioLibrary EnsureLibraryAsset(ref string libAssetPath)
+        {
+            if (string.IsNullOrEmpty(libAssetPath)) libAssetPath = kDefaultLibPath;
+            var dir = System.IO.Path.GetDirectoryName(libAssetPath)?.Replace("\\", "/");
+            if (!string.IsNullOrEmpty(dir) && !AssetDatabase.IsValidFolder(dir))
+                CreateFolders(dir);
 
+            var lib = AssetDatabase.LoadAssetAtPath<AudioLibrary>(libAssetPath);
+            if (lib == null)
+            {
+                lib = ScriptableObject.CreateInstance<AudioLibrary>();
+                AssetDatabase.CreateAsset(lib, libAssetPath);
+                AssetDatabase.SaveAssets();
+            }
+            return lib;
+        }
 
+        private static void CreateFolders(string assetPath)
+        {
+            var parts = assetPath.Split('/');
+            string cur = parts[0]; // "Assets"
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string next = $"{cur}/{parts[i]}";
+                if (!AssetDatabase.IsValidFolder(next))
+                    AssetDatabase.CreateFolder(cur, parts[i]);
+                cur = next;
+            }
+        }
     }
 
+    // ===== Post-reload: chạy Sync sau khi biên dịch xong =====
     [InitializeOnLoad]
     internal static class AudioPipelinePostReload
     {
@@ -272,42 +293,51 @@ namespace Tiko.AudioSystem.EditorTools
         private static void TryRunPendingSync()
         {
             if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
-
             if (!SessionState.GetBool("AudioPipeline_PendingSync", false)) return;
-            var cfgPath = SessionState.GetString("AudioPipeline_ConfigPath", "");
-            var cfg = AssetDatabase.LoadAssetAtPath<AudioImportConfig>(cfgPath);
-            if (cfg == null) { ClearFlags(); return; }
 
-            var keys = AudioScanUtils.ScanCueFolders(cfg, out var map);
-            AudioLibrarySync.SyncLibrary(cfg, map);
+            // Lấy dữ liệu đã lưu
+            var libPath = SessionState.GetString("Tiko.Audio.LibraryPath", "");
+            var cuesRoot = SessionState.GetString("Tiko.Audio.CuesRoot", "");
+            var lib = AssetDatabase.LoadAssetAtPath<AudioLibrary>(libPath);
+            if (lib == null)
+            {
+                ClearFlags();
+                EditorApplication.update -= TryRunPendingSync;
+                Debug.LogWarning("[AudioPipeline] Library không tồn tại để sync.");
+                return;
+            }
+
+            var keys = AudioScanUtils.ScanCueFolders_PathOnly(cuesRoot, out var map);
+            AudioLibrarySync.SyncLibrary_LibAndMap(lib, map); // <-- cập nhật chữ ký như đã trao đổi
 
             Debug.Log("[AudioPipeline] Sync Library done after scripts reloaded.");
             ClearFlags();
             EditorApplication.update -= TryRunPendingSync;
-
         }
 
         private static void ClearFlags()
         {
             SessionState.EraseBool("AudioPipeline_PendingSync");
-            SessionState.EraseString("AudioPipeline_ConfigPath");
+            SessionState.EraseString("Tiko.Audio.LibraryPath");
+            SessionState.EraseString("Tiko.Audio.CuesRoot");
         }
     }
-    // V1.1 – Editor preview helper
+
+    // ===== Editor preview helper (AudioUtil) =====
     internal static class EditorAudioPreview
     {
-        static System.Reflection.MethodInfo _playMethod;
-        static System.Reflection.MethodInfo _stopAllMethod;
+        private static readonly System.Reflection.MethodInfo _playMethod;
+        private static readonly System.Reflection.MethodInfo _stopAllMethod;
 
         static EditorAudioPreview()
         {
             var audioUtil = typeof(AudioImporter).Assembly.GetType("UnityEditor.AudioUtil");
             _playMethod = audioUtil.GetMethod("PlayPreviewClip",
                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public,
-                null, new System.Type[] { typeof(AudioClip), typeof(int), typeof(bool) }, null)
+                null, new Type[] { typeof(AudioClip), typeof(int), typeof(bool) }, null)
                 ?? audioUtil.GetMethod("PlayPreviewClip",
                     System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
-                    null, new System.Type[] { typeof(AudioClip), typeof(int), typeof(bool) }, null);
+                    null, new Type[] { typeof(AudioClip), typeof(int), typeof(bool) }, null);
             _stopAllMethod = audioUtil.GetMethod("StopAllPreviewClips",
                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)
                 ?? audioUtil.GetMethod("StopAllPreviewClips",
@@ -326,6 +356,5 @@ namespace Tiko.AudioSystem.EditorTools
             _stopAllMethod.Invoke(null, null);
         }
     }
-
 }
 #endif

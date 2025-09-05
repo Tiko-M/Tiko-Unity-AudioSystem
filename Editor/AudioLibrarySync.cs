@@ -8,51 +8,47 @@ namespace Tiko.AudioSystem.EditorTools
 {
     internal static class AudioLibrarySync
     {
-        public static void SyncLibrary(AudioImportConfig cfg, Dictionary<string, string> locationToKey)
+        /// <summary>
+        /// Đồng bộ AudioLibrary từ map token -> locations (folder hoặc file).
+        /// - Với location là folder: chỉ lấy AudioClip nằm TRỰC TIẾP trong folder đó (không lấy của subfolder).
+        /// - Với location là file: lấy đúng clip đó.
+        /// Ghi đè toàn bộ danh sách (remove-missing = ON).
+        /// </summary>
+        public static void SyncLibrary_LibAndMap(AudioLibrary lib, Dictionary<string, List<string>> tokenToLocations)
         {
-            if (cfg == null) return;
+            if (lib == null) { Debug.LogError("[AudioLibrarySync] Library null"); return; }
+            if (tokenToLocations == null) tokenToLocations = new Dictionary<string, List<string>>();
 
-            var lib = cfg.targetLibrary;
-            if (lib == null)
+            // Build danh sách MỚI từ scan
+            var newData = new List<(string token, AudioClip[] clips)>();
+
+            foreach (var kv in tokenToLocations)
             {
-                string cfgPath = AssetDatabase.GetAssetPath(cfg);
-                string dir = System.IO.Path.GetDirectoryName(cfgPath);
-                string targetPath = $"{dir}/AudioLibrary.asset";
-                lib = ScriptableObject.CreateInstance<AudioLibrary>();
-                AssetDatabase.CreateAsset(lib, targetPath);
-                AssetDatabase.SaveAssets();
-                cfg.targetLibrary = lib;
-                EditorUtility.SetDirty(cfg);
-                Debug.Log($"[AudioLibrarySync] Tạo mới AudioLibrary: {targetPath}");
-            }
+                string token = kv.Key;
+                var locations = kv.Value ?? new List<string>();
+                var bag = new List<AudioClip>();
 
-            // Build danh sách MỚI từ scan (Remove Missing = ON)
-            var newData = new List<(string key, string token, AudioClip[] clips)>();
-
-            foreach (var kv in locationToKey)
-            {
-                string location = kv.Key;
-                string token = kv.Value;
-
-                AudioClip[] clips;
-                if (AssetDatabase.IsValidFolder(location))
+                foreach (var loc in locations)
                 {
-                    var folderNorm = location.Replace("\\", "/");
-                    var guids = AssetDatabase.FindAssets("t:AudioClip", new[] { location });
-                    clips = guids
-                        .Select(g => AssetDatabase.GUIDToAssetPath(g))
-                        .Where(p => System.IO.Path.GetDirectoryName(p).Replace("\\", "/") == folderNorm) // chỉ clip trực tiếp
-                        .Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p))
-                        .Where(a => a != null)
-                        .ToArray();
-                }
-                else
-                {
-                    var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(location);
-                    clips = (clip != null) ? new[] { clip } : System.Array.Empty<AudioClip>();
+                    if (AssetDatabase.IsValidFolder(loc))
+                    {
+                        var folderNorm = loc.Replace("\\", "/");
+                        var guids = AssetDatabase.FindAssets("t:AudioClip", new[] { loc });
+                        var direct = guids
+                            .Select(g => AssetDatabase.GUIDToAssetPath(g))
+                            .Where(p => System.IO.Path.GetDirectoryName(p).Replace("\\", "/") == folderNorm) // chỉ clip trực tiếp
+                            .Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p))
+                            .Where(a => a != null);
+                        bag.AddRange(direct);
+                    }
+                    else
+                    {
+                        var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(loc);
+                        if (clip != null) bag.Add(clip);
+                    }
                 }
 
-                newData.Add((token, token, clips));
+                newData.Add((token, bag.Distinct().ToArray()));
             }
 
             // Ghi list bằng SerializedObject
@@ -71,21 +67,13 @@ namespace Tiko.AudioSystem.EditorTools
             {
                 var el = listProp.GetArrayElementAtIndex(i);
 
-                var keyProp = el.FindPropertyRelative("key");
-                var clipsProp = el.FindPropertyRelative("clips");
-                var nameProp = el.FindPropertyRelative("name"); // <-- field bạn mới thêm
+                var keyProp = el.FindPropertyRelative("key");   // string
+                var nameProp = el.FindPropertyRelative("name");  // optional (nếu có)
+                var clipsProp = el.FindPropertyRelative("clips"); // AudioClip[]
 
-
-                // key
-                if (keyProp != null)
-                {
-                    var names = keyProp.enumDisplayNames;
-                    int idx = System.Array.IndexOf(names, newData[i].key.ToString());
-                }
-
-                // name (nếu có)
-                if (nameProp != null)
-                    nameProp.stringValue = newData[i].token;
+                // key/name
+                if (keyProp != null) keyProp.stringValue = newData[i].token;
+                if (nameProp != null) nameProp.stringValue = newData[i].token;
 
                 // clips
                 if (clipsProp != null)
@@ -109,7 +97,8 @@ namespace Tiko.AudioSystem.EditorTools
                 {
                     var x = pitchRangeProp.FindPropertyRelative("x");
                     var y = pitchRangeProp.FindPropertyRelative("y");
-                    if (x != null && y != null && Mathf.Approximately(x.floatValue, 0f) && Mathf.Approximately(y.floatValue, 0f))
+                    if (x != null && y != null &&
+                        Mathf.Approximately(x.floatValue, 0f) && Mathf.Approximately(y.floatValue, 0f))
                     { x.floatValue = 1f; y.floatValue = 1f; }
                 }
                 if (maxInstProp != null && maxInstProp.intValue < 0) maxInstProp.intValue = 0;

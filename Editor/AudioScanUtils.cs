@@ -9,21 +9,30 @@ namespace Tiko.AudioSystem.EditorTools
 {
     internal static class AudioScanUtils
     {
-        public static List<string> ScanCueFolders(AudioImportConfig cfg, out Dictionary<string, string> locationToKey)
+        /// <summary>
+        /// Quét cuesRoot:
+        /// - MỖI subfolder TRỰC TIẾP (và con cháu) dưới root -> 1 cue (token = tên folder đã sanitize)
+        /// - MỌI file AudioClip rời không thuộc các folder đã “tiêu thụ” -> 1 cue (token = tên file)
+        /// Trả về danh sách token đã sort; đồng thời xuất map token -> danh sách location (folder hoặc file).
+        /// </summary>
+        public static List<string> ScanCueFolders_PathOnly(string cuesRoot, out Dictionary<string, List<string>> tokenToLocations)
         {
-            locationToKey = new Dictionary<string, string>();
+            tokenToLocations = new Dictionary<string, List<string>>();
             var keys = new List<string>();
-            if (cfg == null || string.IsNullOrEmpty(cfg.cuesRoot)) return keys;
+            if (string.IsNullOrEmpty(cuesRoot)) return keys;
 
-            string root = cfg.cuesRoot.Replace("\\", "/");
+            string root = cuesRoot.Replace("\\", "/");
             if (!AssetDatabase.IsValidFolder(root))
             {
                 Debug.LogWarning($"[AudioScan] Không tìm thấy thư mục: {root}");
                 return keys;
             }
 
-            // Quét tất cả subfolder (đã lọc exclude) – KHÔNG coi root là cue
-            var allFolders = GetAllFoldersRecursive(root, cfg.excludeFolders);
+            // Exclude mặc định nhẹ (có thể nâng cấp thành EditorPrefs nếu cần)
+            var excludes = new List<string> { "_bak", "_ignore" };
+
+            // Duyệt tất cả folder (bao gồm root), lọc exclude
+            var allFolders = GetAllFoldersRecursive(root, excludes);
 
             var usedTokens = new HashSet<string>();
             var consumedClipPaths = new HashSet<string>(); // clip đã “thuộc” 1 cue theo folder
@@ -33,11 +42,14 @@ namespace Tiko.AudioSystem.EditorTools
             {
                 var folderNorm = folder.Replace("\\", "/");
                 if (folderNorm == root) continue; // đừng coi root là cue
-                if (IsInExcludedFolder(folderNorm, cfg.excludeFolders)) continue;
+                if (IsInExcludedFolder(folderNorm, excludes)) continue;
 
                 var folderName = Path.GetFileName(folderNorm);
                 string token = MakeUniqueToken(SanitizeToEnumToken(folderName), usedTokens);
-                locationToKey[folderNorm] = token;
+
+                if (!tokenToLocations.TryGetValue(token, out var list))
+                    tokenToLocations[token] = list = new List<string>();
+                list.Add(folderNorm);
                 keys.Add(token);
 
                 // Đánh dấu các clip TRỰC TIẾP trong folder này đã được “tiêu thụ”
@@ -51,19 +63,22 @@ namespace Tiko.AudioSystem.EditorTools
             {
                 var path = AssetDatabase.GUIDToAssetPath(g).Replace("\\", "/");
                 if (consumedClipPaths.Contains(path)) continue;
-                if (IsInExcludedFolder(path, cfg.excludeFolders)) continue;
+                if (IsInExcludedFolder(path, excludes)) continue;
 
                 var name = Path.GetFileNameWithoutExtension(path);
                 string token = MakeUniqueToken(SanitizeToEnumToken(name), usedTokens);
-                locationToKey[path] = token;
+
+                if (!tokenToLocations.TryGetValue(token, out var list))
+                    tokenToLocations[token] = list = new List<string>();
+                list.Add(path);
                 keys.Add(token);
             }
 
-            keys.Sort(System.StringComparer.Ordinal);
+            keys = keys.Distinct().OrderBy(k => k, System.StringComparer.Ordinal).ToList();
             return keys;
         }
 
-        // ===== Helpers =====
+        // ===== Helpers (kế thừa ý tưởng & hành vi từ bản trước) =====
 
         // Lấy các clip TRỰC TIẾP trong folder (không lấy của subfolder)
         private static List<string> GetImmediateClipPaths(string folder)
@@ -80,7 +95,6 @@ namespace Tiko.AudioSystem.EditorTools
             return list;
         }
 
-        // Duyệt đệ quy folder (lọc exclude ngay từ đầu)
         private static List<string> GetAllFoldersRecursive(string root, List<string> excludes)
         {
             var result = new List<string>();
@@ -101,7 +115,6 @@ namespace Tiko.AudioSystem.EditorTools
             return result;
         }
 
-        // Kiểm tra đường dẫn có chứa tên folder trong exclude không (case-insensitive)
         private static bool IsInExcludedFolder(string path, List<string> excludes)
         {
             if (excludes == null || excludes.Count == 0) return false;

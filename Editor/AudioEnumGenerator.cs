@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -14,27 +13,38 @@ namespace Tiko.AudioSystem.EditorTools
         private const string START = "// <AUTOGEN: DO NOT EDIT>";
         private const string END = "// </AUTOGEN: DO NOT EDIT>";
 
-        public static void GenerateEnum(AudioImportConfig cfg, IReadOnlyList<string> keys)
+        /// <summary>
+        /// Sinh/ghi enum vào file path chỉ định (tạo nếu chưa có), chèn keys vào vùng AUTOGEN.
+        /// </summary>
+        public static void GenerateEnum_PathOnly(string enumFilePath, IReadOnlyList<string> keys)
         {
-            if (cfg == null) { Debug.LogError("[AudioEnumGenerator] Config null"); return; }
-            string path = cfg.enumFilePath;
-            if (string.IsNullOrEmpty(path)) { Debug.LogError("[AudioEnumGenerator] enumFilePath rỗng"); return; }
+            if (string.IsNullOrEmpty(enumFilePath))
+            {
+                Debug.LogError("[AudioEnumGenerator] enumFilePath rỗng");
+                return;
+            }
+
+            // Đảm bảo thư mục tồn tại
+            var dir = Path.GetDirectoryName(enumFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
 
             string content;
-            if (File.Exists(path))
-                content = File.ReadAllText(path, Encoding.UTF8);
+            if (File.Exists(enumFilePath))
+            {
+                content = File.ReadAllText(enumFilePath, Encoding.UTF8);
+            }
             else
             {
-                content = "namespace AudioSystem\n{\n" +
-                          "    public enum EAudio\n" +
-                          "    {\n" +
-                          "        None = 0,\n" +
-                          $"        {START}\n" +
-                          $"        {END}\n" +
-                          "    }\n" +
-                          "}\n";
-                var dir = System.IO.Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                // Mặc định không namespace để dễ dùng ở Assets
+                content =
+@"public enum EAudio
+{
+    None = 0,
+    // <AUTOGEN: DO NOT EDIT>
+    // </AUTOGEN: DO NOT EDIT>
+}
+";
             }
 
             int iStart = content.IndexOf(START, StringComparison.Ordinal);
@@ -46,16 +56,22 @@ namespace Tiko.AudioSystem.EditorTools
             }
 
             var sb = new StringBuilder();
-            foreach (var k in keys)
-                sb.AppendLine($"        {k},");
+            if (keys != null)
+            {
+                foreach (var k in keys)
+                {
+                    if (string.IsNullOrEmpty(k)) continue;
+                    sb.AppendLine($"    {k},");
+                }
+            }
 
             string newContent = content.Substring(0, iStart + START.Length) + "\n" +
                                 sb.ToString() + "\n" +
                                 content.Substring(iEnd);
 
-            File.WriteAllText(path, newContent, Encoding.UTF8);
-            AssetDatabase.ImportAsset(path);
-            Debug.Log($"[AudioEnumGenerator] Đã cập nhật {path} ({keys.Count} keys).");
+            File.WriteAllText(enumFilePath, newContent, Encoding.UTF8);
+            AssetDatabase.ImportAsset(enumFilePath);
+            Debug.Log($"[AudioEnumGenerator] Đã cập nhật {enumFilePath} ({(keys?.Count ?? 0)} keys).");
         }
     }
 }

@@ -31,17 +31,6 @@ namespace Tiko.AudioSystem.EditorTools
             AssetDatabase.ImportPackage(pkgFile, /*interactive:*/ false);
             AssetDatabase.Refresh();
 
-            // (Optional) set lại config nếu muốn:
-            var cfg = AssetDatabase.LoadAssetAtPath<AudioSystem.AudioImportConfig>("Assets/AudioImportConfig.asset");
-            var lib = AssetDatabase.LoadAssetAtPath<AudioSystem.AudioLibrary>("Assets/AudioLibrary.asset");
-            var enumPath = "Assets/Tiko/AudioSystem/EAudio.cs";
-            if (cfg != null)
-            {
-                cfg.enumFilePath = enumPath;   // enum ở Assets → ghi được
-                cfg.targetLibrary = cfg.targetLibrary ? cfg.targetLibrary : lib;
-                cfg.cuesRoot = "";             // ép user kéo folder audio cho chắc
-                EditorUtility.SetDirty(cfg);
-            }
 
             AssetDatabase.SaveAssets();
             Debug.Log("[AudioSystem] Imported template from unitypackage → Assets/Tiko/AudioSystem.");
