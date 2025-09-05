@@ -10,8 +10,6 @@ namespace AudioSystem.EditorTools
     {
         private AudioImportConfig _config;
         private Vector2 _scroll;
-
-        // Trạng thái foldout theo GIÁ TRỊ THẬT của enum
         private readonly Dictionary<int, bool> _foldouts = new();
 
         // UI state
@@ -102,7 +100,6 @@ namespace AudioSystem.EditorTools
                 return;
             }
 
-            // Toolbar (giữ nguyên nếu bạn đang dùng)
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
                 GUILayout.Label("Audio Library", GUILayout.Width(92));
@@ -124,7 +121,6 @@ namespace AudioSystem.EditorTools
                 }
             }
 
-            // Header nhắc cột (Key là header, Clips ở body)
             using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
             {
                 GUILayout.Label("Key", GUILayout.Width(260));
@@ -137,12 +133,13 @@ namespace AudioSystem.EditorTools
                 var elem = listProp.GetArrayElementAtIndex(i);
                 if (elem == null) continue;
 
-                var keyProp = elem.FindPropertyRelative("key");     // EAudio
-                var clipsProp = elem.FindPropertyRelative("clips");   // AudioClip[]
+                var keyProp = elem.FindPropertyRelative("key");
+                var clipsProp = elem.FindPropertyRelative("clips");
                 if (keyProp == null || clipsProp == null) continue;
 
-                int keyVal = keyProp.intValue; // GIÁ TRỊ THẬT
-                string keyName = keyProp.enumDisplayNames[keyProp.enumValueIndex];
+                int keyVal = keyProp.intValue;
+                string keyName = System.Enum.GetName(typeof(EAudio), keyVal) ?? $"#{keyVal}";
+
                 int clipCount = Mathf.Max(0, clipsProp.arraySize);
 
                 bool anyNull = false;
@@ -199,6 +196,17 @@ namespace AudioSystem.EditorTools
                                 {
                                     clipElem.objectReferenceValue = null;
                                 }
+                                // V1.1 – Preview buttons
+                                if (GUILayout.Button("▶", GUILayout.Width(28)))
+                                {
+                                    var clip = clipElem.objectReferenceValue as AudioClip;
+                                    if (clip != null) EditorAudioPreview.Play(clip);
+                                }
+                                if (GUILayout.Button("■", GUILayout.Width(28)))
+                                {
+                                    EditorAudioPreview.StopAll();
+                                }
+
                             }
                         }
                     }
@@ -244,14 +252,13 @@ namespace AudioSystem.EditorTools
             var cfg = AssetDatabase.LoadAssetAtPath<AudioImportConfig>(cfgPath);
             if (cfg == null) { ClearFlags(); return; }
 
-            // Re-scan (lấy enum mới vừa compile) rồi sync
             var keys = AudioScanUtils.ScanCueFolders(cfg, out var map);
             AudioLibrarySync.SyncLibrary(cfg, map);
 
             Debug.Log("[AudioPipeline] Sync Library done after scripts reloaded.");
             ClearFlags();
-            // Có thể bỏ đăng ký update nếu không cần chạy thường trực
-            // EditorApplication.update -= TryRunPendingSync;
+            EditorApplication.update -= TryRunPendingSync;
+
         }
 
         private static void ClearFlags()
@@ -260,5 +267,39 @@ namespace AudioSystem.EditorTools
             SessionState.EraseString("AudioPipeline_ConfigPath");
         }
     }
+    // V1.1 – Editor preview helper
+    internal static class EditorAudioPreview
+    {
+        static System.Reflection.MethodInfo _playMethod;
+        static System.Reflection.MethodInfo _stopAllMethod;
+
+        static EditorAudioPreview()
+        {
+            var audioUtil = typeof(AudioImporter).Assembly.GetType("UnityEditor.AudioUtil");
+            _playMethod = audioUtil.GetMethod("PlayPreviewClip",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public,
+                null, new System.Type[] { typeof(AudioClip), typeof(int), typeof(bool) }, null)
+                ?? audioUtil.GetMethod("PlayPreviewClip",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+                    null, new System.Type[] { typeof(AudioClip), typeof(int), typeof(bool) }, null);
+            _stopAllMethod = audioUtil.GetMethod("StopAllPreviewClips",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)
+                ?? audioUtil.GetMethod("StopAllPreviewClips",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        }
+
+        public static void Play(AudioClip clip, bool loop = false)
+        {
+            if (clip == null || _playMethod == null) return;
+            _playMethod.Invoke(null, new object[] { clip, 0, loop });
+        }
+
+        public static void StopAll()
+        {
+            if (_stopAllMethod == null) return;
+            _stopAllMethod.Invoke(null, null);
+        }
+    }
+
 }
 #endif

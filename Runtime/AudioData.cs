@@ -17,6 +17,10 @@ namespace AudioSystem
         [Header("Biến thể & Kiểm soát")]
         [Tooltip("Pitch random trong khoảng [x, y].")]
         public Vector2 pitchRange = new Vector2(1f, 1f);
+        public int maxInstances = 0;
+        public int priority = 128;
+        public float maxDuration = 0f;
+        public UnityEngine.Audio.AudioMixerGroup overrideGroup;
 
         public bool useUnscaledCooldown = false;
 

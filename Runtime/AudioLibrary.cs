@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace AudioSystem
 {
-    [CreateAssetMenu(menuName = "Audio/AudioLibrary", fileName = "AudioLibrary")]
+    [CreateAssetMenu(menuName = "Audio/Audio Library", fileName = "AudioLibrary")]
     public class AudioLibrary : ScriptableObject
     {
         [SerializeField] private List<AudioData> audioList = new List<AudioData>();

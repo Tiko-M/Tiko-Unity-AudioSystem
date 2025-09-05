@@ -37,6 +37,8 @@ namespace AudioSystem
         private readonly Dictionary<EAudio, int> activeByType = new Dictionary<EAudio, int>();
         private readonly Dictionary<AudioSource, EAudio> srcToType = new Dictionary<AudioSource, EAudio>();
         private readonly Dictionary<EAudio, float> lastPlayedTime = new Dictionary<EAudio, float>();
+        // V1.1
+        private readonly Dictionary<AudioSource, float> _startedAt = new Dictionary<AudioSource, float>();
 
 
 
@@ -328,6 +330,38 @@ namespace AudioSystem
         private AudioHandle PlaySFXInternal(EAudio key, Vector3? position, Transform followTarget)
         {
             var data = library != null ? library.GetAudioData(key) : null;
+
+            if (data.maxInstances > 0 && activeByType.TryGetValue(key, out var curCount) && curCount >= data.maxInstances)
+            {
+                AudioSource oldest = null;
+                float oldestT = float.MaxValue;
+
+                // Tìm source cùng key cũ nhất
+                foreach (var kv in srcToType)
+                {
+                    if (!kv.Value.Equals(key)) continue;
+                    if (_startedAt.TryGetValue(kv.Key, out var t) && t < oldestT)
+                    {
+                        oldestT = t;
+                        oldest = kv.Key;
+                    }
+                }
+
+                if (oldest != null)
+                {
+                    // giảm đếm & release
+                    if (activeByType.TryGetValue(key, out var n)) activeByType[key] = Mathf.Max(0, n - 1);
+                    srcToType.Remove(oldest);
+                    _startedAt.Remove(oldest);
+                    ReleaseSfxSource(oldest);
+                }
+                else
+                {
+                    // fallback (hiếm): không thể steal -> bỏ phát
+                    return default;
+                }
+            }
+
             if (data == null)
             {
                 Debug.LogWarning($"[AudioManager] Không tìm thấy AudioData cho {key}");
@@ -377,8 +411,37 @@ namespace AudioSystem
                 src.spatialBlend = 0f;
             }
 
+            if (position.HasValue || followTarget != null)
+            {
+                src.spatialBlend = 1f;
+                src.dopplerLevel = 0f;
+                if (followTarget != null)
+                {
+                    var att = src.GetComponent<AttachedAudioSource>();
+                    if (att == null) att = src.gameObject.AddComponent<AttachedAudioSource>();
+                    att.target = followTarget;
+                    att.enabled = true;
+                    src.transform.position = followTarget.position;
+                }
+                else
+                {
+                    src.transform.position = position ?? Vector3.zero;
+                }
+            }
+            else
+            {
+                src.spatialBlend = 0f;
+            }
+
+            src.outputAudioMixerGroup = data.overrideGroup != null ? data.overrideGroup : sfxGroup;
+            src.priority = Mathf.Clamp(data.priority, 0, 256);
+
             src.volume = Mathf.Clamp01(data.volume);
             src.Play();
+            _startedAt[src] = Time.unscaledTime;
+            srcToType[src] = key;
+            activeByType[key] = activeByType.TryGetValue(key, out var cnt) ? cnt + 1 : 1;
+
 
             var handle = new AudioHandle { id = _nextHandleId++, source = src };
             StartCoroutine(ReleaseAfter(src, key));
@@ -410,11 +473,25 @@ namespace AudioSystem
 
         private IEnumerator ReleaseAfter(AudioSource src, EAudio key)
         {
-            if (src == null) yield break;
-            float length = src.clip != null ? src.clip.length : 0f;
-            float ttl = length / Mathf.Max(0.01f, src.pitch);
-            float end = Time.unscaledTime + ttl; // độc lập timeScale
-            while (Time.unscaledTime < end && src != null && (src.isPlaying || src.loop))
+            var data = library != null ? library.GetAudioData(key) : null;
+            float length = (src != null && src.clip != null) ? src.clip.length : 0f;
+            float baseTtl = length / Mathf.Max(0.01f, src != null ? src.pitch : 1f);
+
+            float ttl;
+            if (src != null && src.loop)
+            {
+                if (data != null && data.maxDuration > 0f)
+                    ttl = data.maxDuration;
+                else
+                    ttl = 600f;
+            }
+            else
+            {
+                ttl = baseTtl;
+            }
+
+            float end = Time.unscaledTime + Mathf.Max(0.01f, ttl);
+            while (src != null && Time.unscaledTime < end && (src.isPlaying || src.loop))
             {
                 yield return null;
             }
@@ -424,9 +501,41 @@ namespace AudioSystem
                 if (activeByType.TryGetValue(type, out var n)) activeByType[type] = Mathf.Max(0, n - 1);
                 srcToType.Remove(src);
             }
+            _startedAt.Remove(src);
+            ReleaseSfxSource(src);
+
+        }
+        public void FadeOutHandle(AudioHandle handle, float duration)
+        {
+            if (!handle.IsValid) return;
+            StartCoroutine(FadeOutThenRelease(handle.source, duration));
+        }
+
+        private IEnumerator FadeOutThenRelease(AudioSource src, float duration)
+        {
+            if (src == null) yield break;
+            float t = 0f;
+            float v0 = src.volume;
+            while (t < duration)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = (duration > 0f) ? Mathf.Clamp01(t / duration) : 1f;
+                src.volume = Mathf.Lerp(v0, 0f, k);
+                yield return null;
+            }
+            src.volume = 0f;
+
+            if (srcToType.TryGetValue(src, out var type))
+            {
+                if (activeByType.TryGetValue(type, out var n)) activeByType[type] = Mathf.Max(0, n - 1);
+                srcToType.Remove(src);
+            }
+            _startedAt.Remove(src);
             ReleaseSfxSource(src);
         }
 
         #endregion
     }
+
+
 }

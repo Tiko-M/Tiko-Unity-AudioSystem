@@ -81,6 +81,9 @@ namespace AudioSystem.EditorTools
                 var clipsProp = el.FindPropertyRelative("clips");
                 var nameProp = el.FindPropertyRelative("name"); // <-- field bạn mới thêm
 
+                if (keyProp != null)
+                    keyProp.intValue = (int)newData[i].key;
+
                 // key
                 if (keyProp != null)
                 {

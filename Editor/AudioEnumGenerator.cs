@@ -12,7 +12,7 @@ namespace AudioSystem.EditorTools
     internal static class AudioEnumGenerator
     {
         private const string START = "// <AUTOGEN: DO NOT EDIT>";
-        private const string END   = "// </AUTOGEN: DO NOT EDIT>";
+        private const string END = "// </AUTOGEN: DO NOT EDIT>";
 
         public static void GenerateEnum(AudioImportConfig cfg, IReadOnlyList<string> keys)
         {
@@ -33,11 +33,12 @@ namespace AudioSystem.EditorTools
                           $"        {END}\n" +
                           "    }\n" +
                           "}\n";
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                var dir = System.IO.Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             }
 
             int iStart = content.IndexOf(START, StringComparison.Ordinal);
-            int iEnd   = content.IndexOf(END,   StringComparison.Ordinal);
+            int iEnd = content.IndexOf(END, StringComparison.Ordinal);
             if (iStart < 0 || iEnd < 0 || iEnd <= iStart)
             {
                 Debug.LogError("[AudioEnumGenerator] Không tìm thấy vùng AUTOGEN trong EAudio.cs");
@@ -49,8 +50,9 @@ namespace AudioSystem.EditorTools
                 sb.AppendLine($"        {k},");
 
             string newContent = content.Substring(0, iStart + START.Length) + "\n" +
-                                sb.ToString() +
+                                sb.ToString() + "\n" +
                                 content.Substring(iEnd);
+
             File.WriteAllText(path, newContent, Encoding.UTF8);
             AssetDatabase.ImportAsset(path);
             Debug.Log($"[AudioEnumGenerator] Đã cập nhật {path} ({keys.Count} keys).");

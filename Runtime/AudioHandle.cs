@@ -2,16 +2,19 @@ using UnityEngine;
 
 namespace AudioSystem
 {
-    /// <summary>
-    /// Handle để điều khiển 1 instance SFX đang phát.
-    /// </summary>
     public struct AudioHandle
     {
         internal int id;
         internal AudioSource source;
 
         public bool IsValid => source != null && id != 0;
+        public bool IsPlaying => IsValid && source.isPlaying;
 
+        public void FadeOut(float duration)
+        {
+            if (!IsValid) return;
+            AudioManager.Instance.FadeOutHandle(this, duration);
+        }
         public void Stop()
         {
             if (IsValid) AudioManager.Instance.StopSFX(this);
