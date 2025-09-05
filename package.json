@@ -1,0 +1,27 @@
+{
+    "name": "com.tiko.audiosystem",
+    "displayName": "Audio System",
+    "version": "0.0.9",
+    "unity": "2018.2",
+    "description": "Just for fun",
+    "license": "MIT",
+    "repository": {
+    "type": "git",
+      "url": "https://github.com/mob-sakai/ParticleEffectForUGUI.git"
+    },
+    "keywords": [
+    "audioi",
+    "system"
+    ],
+    "author": {
+    "name": "Tiko The Monke",
+    "email": "thekittengun@gmail.com"
+    },
+    "samples": [
+    {
+    "displayName": "Template",
+    "description": "AudioSystem Template",
+    "path": "Samples~/Template"
+    }
+  ]
+}

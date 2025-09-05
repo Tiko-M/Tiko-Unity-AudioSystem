@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 395d4bcbdf9f6ef40853b32ebe1f65c6, type: 3}
+  m_Name: Audio Library
+  m_EditorClassIdentifier: 
+  audioList:
+  - name: SFX_Disapear
+    key: 1
+    clips:
+    - {fileID: 8300000, guid: 81fd9e77f1067c746958b12ef9f0c040, type: 3}
+    volume: 1
+    loop: 0
+    minInterval: 0
+    pitchRange: {x: 1, y: 1}
+    useUnscaledCooldown: 0
+  - name: SFX_HoleEat
+    key: 2
+    clips:
+    - {fileID: 8300000, guid: 5fb7bc0477222804c8cb31db80c3d0b2, type: 3}
+    volume: 1
+    loop: 0
+    minInterval: 0
+    pitchRange: {x: 1, y: 1}
+    useUnscaledCooldown: 0
+  - name: SFX_HoleFull
+    key: 3
+    clips:
+    - {fileID: 8300000, guid: 86a8027cf635a954b9799014d9a5910b, type: 3}
+    volume: 1
+    loop: 0
+    minInterval: 0
+    pitchRange: {x: 1, y: 1}
+    useUnscaledCooldown: 0
+  - name: SFX_Humanoid_Jump
+    key: 4
+    clips:
+    - {fileID: 8300000, guid: 06936905f0f454b4c9cde84638e02d31, type: 3}
+    volume: 1
+    loop: 0
+    minInterval: 0
+    pitchRange: {x: 1, y: 1}
+    useUnscaledCooldown: 0
