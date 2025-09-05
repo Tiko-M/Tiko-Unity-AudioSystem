@@ -10,8 +10,6 @@ namespace Tiko.AudioSystem.EditorTools
     {
         // ===== Settings lưu trong EditorPrefs =====
         private const string kCuesRootKey = "Tiko.Audio.CuesRoot";
-        private const string kEnumPathKey = "Tiko.Audio.EnumPath";
-        private const string kLibPathKey = "Tiko.Audio.LibraryPath";
 
         // Mặc định bạn yêu cầu
         private const string kDefaultEnumPath = "Assets/Tiko/Tiko.AudioSystem/Scripts/EAudio.cs";
@@ -34,8 +32,8 @@ namespace Tiko.AudioSystem.EditorTools
         private void OnEnable()
         {
             _cuesRoot = EditorPrefs.GetString(kCuesRootKey, "");
-            _enumPath = EditorPrefs.GetString(kEnumPathKey, kDefaultEnumPath);
-            _libAssetPath = EditorPrefs.GetString(kLibPathKey, kDefaultLibPath);
+            _enumPath = kDefaultEnumPath;
+            _libAssetPath = kDefaultLibPath;
         }
 
         private void OnGUI()
@@ -72,7 +70,6 @@ namespace Tiko.AudioSystem.EditorTools
                 if (GUILayout.Button("Ensure Library", GUILayout.Width(130)))
                 {
                     var lib = EnsureLibraryAsset(ref _libAssetPath);
-                    EditorPrefs.SetString(kLibPathKey, _libAssetPath);
                     if (lib != null) Selection.activeObject = lib;
                 }
             }
@@ -101,7 +98,6 @@ namespace Tiko.AudioSystem.EditorTools
 
                 // Lưu thông tin cho post-reload
                 SessionState.SetBool(kPendingSyncKey, true);
-                SessionState.SetString(kLibPathKey, _libAssetPath);      // Path tới Library để nạp lại
                 SessionState.SetString(kCuesRootKey, _cuesRoot);         // Root để rescan sau reload
 
                 AssetDatabase.Refresh();
