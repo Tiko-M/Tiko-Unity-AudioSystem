@@ -20,7 +20,6 @@ namespace Tiko.AudioSystem
         public int maxInstances = 0;
         public int priority = 128;
         public float maxDuration = 0f;
-        public UnityEngine.Audio.AudioMixerGroup overrideGroup;
 
         public bool useUnscaledCooldown = false;
 
