@@ -432,8 +432,7 @@ namespace Tiko.AudioSystem
             {
                 src.spatialBlend = 0f;
             }
-
-            src.outputAudioMixerGroup = data.overrideGroup != null ? data.overrideGroup : sfxGroup;
+            
             src.priority = Mathf.Clamp(data.priority, 0, 256);
 
             src.volume = Mathf.Clamp01(data.volume);
