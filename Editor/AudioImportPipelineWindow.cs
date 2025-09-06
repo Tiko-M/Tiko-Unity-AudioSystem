@@ -355,6 +355,7 @@ namespace Tiko.AudioSystem.EditorTools
         public static void Play(AudioClip clip, bool loop = false)
         {
             if (clip == null || _playMethod == null) return;
+            StopAll();
             _playMethod.Invoke(null, new object[] { clip, 0, loop });
         }
 
