@@ -13,11 +13,11 @@ namespace Tiko.AudioSystem
         public void FadeOut(float duration)
         {
             if (!IsValid) return;
-            AudioManager.Instance.FadeOutHandle(this, duration);
+            // AudioManager.Instance.FadeOutHandle(this, duration);
         }
         public void Stop()
         {
-            if (IsValid) AudioManager.Instance.StopSFX(this);
+            // if (IsValid) AudioManager.Instance.StopSFX(this);
         }
 
         public void SetVolume(float volume01)
