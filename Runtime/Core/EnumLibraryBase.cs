@@ -1,7 +1,11 @@
+// ============================================================================
+// File: Runtime/Core/EnumLibraryBase.cs
+// Patch: Implement SortByEnumOrder() to keep entries ordered by enum value.
+// Keep everything else as-is for simplicity.
+// ============================================================================
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
 
 namespace Tiko.AudioSystem
 {
@@ -13,23 +17,19 @@ namespace Tiko.AudioSystem
         [Serializable]
         public sealed class Entry
         {
-            public int key; // why: enums serialize sturdily as ints
-            public string keyName; // display-only, aids non-dev comprehension
+            public int key;            // robust serialization
+            public string keyName;     // display-only
             public List<AudioClip> clips = new List<AudioClip>();
             public AudioCue cue = new AudioCue();
         }
 
-
         [SerializeField, HideInInspector] private string enumTypeName;
         [SerializeField] private List<Entry> entries = new List<Entry>();
 
-
         private readonly Dictionary<int, Entry> _map = new Dictionary<int, Entry>();
-
 
         public string EnumTypeName => enumTypeName;
         public IReadOnlyList<Entry> Entries => entries;
-
 
         protected void EnsureEnumType<TEnum>() where TEnum : struct, Enum
         {
@@ -40,15 +40,12 @@ namespace Tiko.AudioSystem
             }
         }
 
-
         public bool TryGet(int key, out Entry entry) => _map.TryGetValue(key, out entry);
-
 
         protected virtual void OnEnable() => RebuildMap();
 #if UNITY_EDITOR
         protected virtual void OnValidate() => RebuildMap();
 #endif
-
 
         private void RebuildMap()
         {
@@ -60,13 +57,11 @@ namespace Tiko.AudioSystem
             }
         }
 
-
         public virtual Type ResolveEnumType()
         {
             if (string.IsNullOrEmpty(enumTypeName)) return null;
             var t = Type.GetType(enumTypeName);
             if (t != null) return t;
-            // why: handle domain reload / assembly rename gracefully
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 t = asm.GetType(enumTypeName) ?? asm.GetType(enumTypeName.Split(',')[0]);
@@ -75,15 +70,9 @@ namespace Tiko.AudioSystem
             return null;
         }
 
-
 #if UNITY_EDITOR
         // ---------- Editor-only sync helpers ----------
-        public struct Diff
-        {
-            public List<int> missing;
-            public List<int> orphans;
-        }
-
+        public struct Diff { public List<int> missing; public List<int> orphans; }
 
         public Diff ComputeDiff()
         {
@@ -91,10 +80,8 @@ namespace Tiko.AudioSystem
             var enumType = ResolveEnumType();
             if (enumType == null || !enumType.IsEnum) return diff;
 
-
             var entrySet = new HashSet<int>();
             foreach (var e in entries) entrySet.Add(e.key);
-
 
             var valueSet = new HashSet<int>();
             foreach (var v in Enum.GetValues(enumType))
@@ -104,16 +91,13 @@ namespace Tiko.AudioSystem
                 if (!entrySet.Contains(k)) diff.missing.Add(k);
             }
 
-
             foreach (var e in entries)
             {
                 if (!valueSet.Contains(e.key)) diff.orphans.Add(e.key);
             }
 
-
             return diff;
         }
-
 
         public void AddMissingFromEnum()
         {
@@ -121,7 +105,6 @@ namespace Tiko.AudioSystem
             if (enumType == null || !enumType.IsEnum) return;
             var set = new HashSet<int>();
             foreach (var e in entries) set.Add(e.key);
-
 
             foreach (var v in Enum.GetValues(enumType))
             {
@@ -138,7 +121,6 @@ namespace Tiko.AudioSystem
             RebuildMap();
         }
 
-
         public void RemoveOrphans()
         {
             var enumType = ResolveEnumType();
@@ -149,11 +131,16 @@ namespace Tiko.AudioSystem
             RebuildMap();
         }
 
-
         public void SortByEnumOrder()
         {
             var enumType = ResolveEnumType();
-            if (enumType == null || !enumType.IsEnum) return;
+            if (enumType == null || !enumType.IsEnum || entries == null) return;
+
+            // 1) sort by numeric key ascending (stable order with append-only enums)
+            entries.Sort((a, b) => a.key.CompareTo(b.key));
+
+            // 2) rebuild cache
+            RebuildMap();
         }
 #endif
     }
