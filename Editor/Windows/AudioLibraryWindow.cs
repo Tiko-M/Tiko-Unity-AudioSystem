@@ -159,8 +159,11 @@ namespace Tiko.AudioSystem.Editor
 
                 if (_so == null) BindCurrentSerializedObject();
 
+                EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(_mode == Mode.SFX ? "SFX Clips" : "BGM Clips", EditorStyles.boldLabel);
                 if (GUILayout.Button("■ Stop", GUILayout.Width(70))) EditorAudioPreviewUtility.StopAll();
+
+                EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.Space(2);
 
