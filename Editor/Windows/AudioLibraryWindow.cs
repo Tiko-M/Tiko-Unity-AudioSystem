@@ -160,6 +160,8 @@ namespace Tiko.AudioSystem.Editor
                 if (_so == null) BindCurrentSerializedObject();
 
                 EditorGUILayout.LabelField(_mode == Mode.SFX ? "SFX Clips" : "BGM Clips", EditorStyles.boldLabel);
+                if (GUILayout.Button("■ Stop", GUILayout.Width(70))) EditorAudioPreviewUtility.StopAll();
+
                 EditorGUILayout.Space(2);
 
                 if (_selectedKey < 0)
@@ -186,7 +188,6 @@ namespace Tiko.AudioSystem.Editor
                         EditorGUILayout.LabelField($"[{_selectedKey}] {nameProp.stringValue}", EditorStyles.boldLabel);
                         GUILayout.FlexibleSpace();
                         if (GUILayout.Button("▶ Preview", GUILayout.Width(90))) PreviewFirstClip(_selectedKey);
-                        if (GUILayout.Button("■ Stop", GUILayout.Width(70))) EditorAudioPreviewUtility.StopAll();
                     }
 
                     EditorGUILayout.Space(2);
@@ -307,6 +308,8 @@ namespace Tiko.AudioSystem.Editor
         private void PreviewFirstClip(int key)
         {
             if (!TryGetEntryProperty(key, out var entryProp)) return;
+
+            EditorAudioPreviewUtility.StopAll();
             var clipsProp = entryProp.FindPropertyRelative("clips");
             var clip = GetFirstClip(clipsProp);
             EditorAudioPreviewUtility.Play(clip);
