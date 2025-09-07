@@ -3,7 +3,7 @@ using UnityEngine.Audio;
 
 namespace Tiko.AudioSystem
 {
-    [AddComponentMenu("AudioSystem/Audio Mixer Controller")]
+    [AddComponentMenu("Tiko/AudioSystem/Audio Mixer Controller")]
     [DefaultExecutionOrder(-95)]
     public sealed class AudioMixerController : MonoBehaviour
     {

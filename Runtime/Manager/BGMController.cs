@@ -11,7 +11,7 @@ using UnityEngine.Audio;
 
 namespace Tiko.AudioSystem
 {
-    [AddComponentMenu("AudioSystem/BGM Controller")]
+    [AddComponentMenu("Tiko/AudioSystem/BGM Controller")]
     [DefaultExecutionOrder(-90)]
     public sealed class BGMController : MonoBehaviour
     {

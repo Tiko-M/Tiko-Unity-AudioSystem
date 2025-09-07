@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Tiko.AudioSystem
 {
-    [CreateAssetMenu(menuName = "AudioSystem/Libraries/Bound Enum Library", fileName = "BoundEnumLibrary")]
+    [CreateAssetMenu(menuName = "Tiko/AudioSystem/Libraries/Bound Enum Library", fileName = "BoundEnumLibrary")]
     public sealed class BoundEnumLibrary : EnumLibraryBase
     {
         [SerializeField]

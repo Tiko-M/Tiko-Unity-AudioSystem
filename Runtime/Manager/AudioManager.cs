@@ -7,7 +7,7 @@ using UnityEngine.Audio;
 
 namespace Tiko.AudioSystem
 {
-    [AddComponentMenu("AudioSystem/Audio Manager")]
+    [AddComponentMenu("Tiko/AudioSystem/Audio Manager")]
     [DefaultExecutionOrder(-100)]
     public sealed class AudioManager : MonoBehaviour
     {
