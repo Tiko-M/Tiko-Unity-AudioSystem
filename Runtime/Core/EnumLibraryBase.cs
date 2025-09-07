@@ -61,7 +61,7 @@ namespace Tiko.AudioSystem
         }
 
 
-        public Type ResolveEnumType()
+        public virtual Type ResolveEnumType()
         {
             if (string.IsNullOrEmpty(enumTypeName)) return null;
             var t = Type.GetType(enumTypeName);
