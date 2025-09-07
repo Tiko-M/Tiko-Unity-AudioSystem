@@ -9,7 +9,7 @@ namespace Tiko.AudioSystem
 {
     [AddComponentMenu("Tiko/AudioSystem/Audio Manager")]
     [DefaultExecutionOrder(-100)]
-    public sealed class AudioManager : MonoBehaviour
+    public sealed partial class AudioManager : MonoBehaviour
     {
         [Header("Libraries")]
         [Tooltip("Library bound to your SFX enum. Drag the asset created from EnumLibrary<YourEnum>.")]
