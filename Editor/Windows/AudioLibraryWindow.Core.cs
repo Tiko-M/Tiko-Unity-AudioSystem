@@ -10,7 +10,7 @@ namespace Tiko.AudioSystem.EditorTools
     {
         private enum Mode { SFX, BGM }
 
-        [MenuItem("Tiko/Audio/Library", priority = 1)]
+        [MenuItem("Tiko/AudioSystem", priority = 1)]
         private static void Open() => GetWindow<AudioLibraryWindow>("Audio Library");
 
         // ====== Shared State (dùng chung giữa các partial) ======
