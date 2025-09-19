@@ -20,11 +20,27 @@ namespace Tiko.AudioSystem.EditorTools
                     _mode = newMode;
                     BindCurrentSerializedObject();
                     BuildEnumCache();
-                    if (!EnsureSelectionValid()) SelectFirstKey();
+
+                    // RESET & RELOAD LIST ENUM KHI ĐỔI TAB
+                    _workItems.Clear();
+                    _enumFilePath = null;
+                    EnsureWorkItemsLoaded();
+
+                    if (_workItems.Count > 0)
+                    {
+                        _selectedIndex = Mathf.Clamp(_selectedIndex, 0, _workItems.Count - 1);
+                        _selectedKey = _workItems[_selectedIndex].value;
+                    }
+                    else
+                    {
+                        _selectedIndex = -1;
+                        _selectedKey = -1;
+                    }
+
+                    Repaint();
                 }
 
                 GUILayout.FlexibleSpace();
-                // ĐÃ BỎ: ô Search, nút Refresh, nút Sync
             }
         }
 

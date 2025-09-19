@@ -3,14 +3,5 @@ namespace Tiko.AudioSystem
 {
     public enum ESFX
     {
-        NewKey = 0,
-        S = 1,
-        C = 2,
-        ZS = 3,
-        D = 4,
-        H = 5,
-        W = 6,
-        V = 7,
-        M = 8,
     }
 }

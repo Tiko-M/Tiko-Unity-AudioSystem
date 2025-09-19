@@ -10,54 +10,18 @@ namespace Tiko.AudioSystem.EditorTools
     {
         private string _enumSearch = string.Empty;
 
-        private struct Row { public int key; public string label; public int fullIndex; }
-
         private void DrawLeftList()
         {
-            using (new EditorGUILayout.VerticalScope(GUILayout.MaxWidth(380)))
+            using (new EditorGUILayout.VerticalScope(GUILayout.MaxWidth(420)))
             {
-                DrawEnumEditorInline();
+                DrawEnumListUnified();
             }
         }
 
-        private void DrawCreateLibBlock()
+        private void DrawEnumListUnified()
         {
-            using (new EditorGUILayout.VerticalScope("box"))
-            {
-                EditorGUILayout.LabelField(_mode == Mode.SFX ? "SFX Library" : "BGM Library", EditorStyles.boldLabel);
-                EditorGUILayout.HelpBox("No library asset found. Create one to start assigning clips.", MessageType.Info);
-                if (GUILayout.Button("Create", GUILayout.Width(100)))
-                {
-                    var path = EditorUtility.SaveFilePanelInProject(
-                        _mode == Mode.SFX ? "Create SfxLibrary" : "Create BgmLibrary",
-                        _mode == Mode.SFX ? "SfxLibrary" : "BgmLibrary",
-                        "asset", "");
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        if (_mode == Mode.SFX)
-                        {
-                            var asset = ScriptableObject.CreateInstance<SfxLibrary>();
-                            AssetDatabase.CreateAsset(asset, path);
-                            AssetDatabase.SaveAssets();
-                            _sfxLib = asset;
-                        }
-                        else
-                        {
-                            var asset = ScriptableObject.CreateInstance<BGMLibrary>();
-                            AssetDatabase.CreateAsset(asset, path);
-                            AssetDatabase.SaveAssets();
-                            _bgmLib = asset;
-                        }
-                        BindCurrentSerializedObject();
-                        BuildEnumCache();
-                        SelectFirstKey();
-                    }
-                }
-            }
-        }
+            EnsureWorkItemsLoaded();
 
-        private void DrawEnumEditorInline()
-        {
             using (new EditorGUILayout.VerticalScope("box"))
             {
                 using (new EditorGUILayout.HorizontalScope())
@@ -66,8 +30,10 @@ namespace Tiko.AudioSystem.EditorTools
                     GUILayout.FlexibleSpace();
                     if (GUILayout.Button("+", GUILayout.Width(28)))
                     {
-                        int next = _workItems.Count;
-                        _workItems.Add(new EnumCodegenUtility.EnumItem { name = "NewKey", value = next });
+                        int nextVal = _workItems.Count > 0 ? _workItems[_workItems.Count - 1].value + 1 : 0;
+                        _workItems.Add(new EnumCodegenUtility.EnumItem { name = "NewKey", value = nextVal });
+                        _selectedIndex = _workItems.Count - 1;
+                        _selectedKey = _workItems[_selectedIndex].value;
                     }
                     if (GUILayout.Button("Apply Changes", GUILayout.Width(120)))
                     {
@@ -76,47 +42,73 @@ namespace Tiko.AudioSystem.EditorTools
                     }
                 }
 
-                EditorGUILayout.LabelField("Keys", EditorStyles.boldLabel);
                 _enumSearch = EditorGUILayout.TextField(_enumSearch);
 
-                using (var sv = new EditorGUILayout.ScrollViewScope(_scrollLeft, GUILayout.MaxHeight(220)))
+                _scrollLeft = EditorGUILayout.BeginScrollView(_scrollLeft, GUILayout.MaxHeight(420));
+                for (int i = 0; i < _workItems.Count; i++)
                 {
-                    _scrollLeft = sv.scrollPosition;
+                    var it = _workItems[i];
+                    if (!string.IsNullOrEmpty(_enumSearch) &&
+                        it.name.IndexOf(_enumSearch, StringComparison.OrdinalIgnoreCase) < 0) continue;
 
-                    for (int i = 0; i < _workItems.Count; i++)
+                    bool isSel = _selectedIndex == i;
+                    var style = isSel ? _rowStyleSelected : _rowStyle;
+
+                    using (new EditorGUILayout.HorizontalScope(style))
                     {
-                        var it = _workItems[i];
-                        bool pass = string.IsNullOrEmpty(_enumSearch) || it.name.IndexOf(_enumSearch, StringComparison.OrdinalIgnoreCase) >= 0;
-                        if (!pass) continue;
-
-                        bool isSel = (_selectedKey == it.value);
-                        var style = isSel ? _rowStyleSelected : _rowStyle;
-
-                        using (new EditorGUILayout.HorizontalScope(style))
+                        GUILayout.Label($"[{i}]", GUILayout.Width(28));
+                        string newName = EditorGUILayout.TextField(it.name);
+                        GUILayout.FlexibleSpace();
+                        if (GUILayout.Button("Delete", GUILayout.Width(60)))
                         {
-                            GUILayout.Label($"[{i}]", GUILayout.Width(28));
-                            string newName = EditorGUILayout.TextField(it.name);
-
-                            GUILayout.FlexibleSpace();
-                            if (GUILayout.Button("Delete", GUILayout.Width(60)))
-                            {
-                                _workItems.RemoveAt(i);
-                                ReindexWorkItems_Inline();
-                                if (_selectedIndex >= _workItems.Count) SetSelectionByIndex(Mathf.Max(0, _workItems.Count - 1));
-                                i--;
-                                continue;
-                            }
-
-                            if (newName != it.name)
-                            {
-                                _workItems[i] = new EnumCodegenUtility.EnumItem { name = newName, value = it.value };
-                                var keyVal = it.value;
-                                int idx = Array.IndexOf(_enumKeys, keyVal);
-                                if (idx >= 0) SetSelection(keyVal, idx);
-                            }
+                            _workItems.RemoveAt(i);
+                            ReindexWorkItems_Inline();
+                            if (_workItems.Count == 0) { _selectedIndex = -1; _selectedKey = -1; }
+                            else { _selectedIndex = Mathf.Clamp(_selectedIndex, 0, _workItems.Count - 1); _selectedKey = _workItems[_selectedIndex].value; }
+                            i--;
+                            continue;
                         }
+                        if (newName != it.name)
+                            _workItems[i] = new EnumCodegenUtility.EnumItem { name = newName, value = it.value };
+                    }
+
+                    var lastRect = GUILayoutUtility.GetLastRect();
+                    if (Event.current.type == EventType.MouseDown && lastRect.Contains(Event.current.mousePosition))
+                    {
+                        _selectedIndex = i;
+                        _selectedKey = _workItems[i].value;
+                        Repaint();
                     }
                 }
+                EditorGUILayout.EndScrollView();
+            }
+        }
+
+        private void EnsureWorkItemsLoaded()
+        {
+            if (_workItems != null && _workItems.Count > 0) return;
+
+            var lib = GetCurrentLib();
+            if (lib != null)
+            {
+                var t = lib.ResolveEnumType();
+                if (t != null)
+                {
+                    var names = Enum.GetNames(t);
+                    var values = (Array)Enum.GetValues(t);
+                    _workItems = new List<EnumCodegenUtility.EnumItem>(names.Length);
+                    for (int i = 0; i < names.Length; i++)
+                        _workItems.Add(new EnumCodegenUtility.EnumItem { name = names[i], value = Convert.ToInt32(values.GetValue(i)) });
+                    _workItems.Sort((a, b) => a.value.CompareTo(b.value));
+                }
+            }
+
+            if (_workItems == null) _workItems = new List<EnumCodegenUtility.EnumItem>();
+
+            if (_workItems.Count > 0 && (_selectedIndex < 0 || _selectedIndex >= _workItems.Count))
+            {
+                _selectedIndex = 0;
+                _selectedKey = _workItems[0].value;
             }
         }
 
@@ -132,16 +124,8 @@ namespace Tiko.AudioSystem.EditorTools
             for (int i = 0; i < _workItems.Count; i++)
             {
                 var nm = _workItems[i].name;
-                if (!EnumCodegenUtility.IsValidIdentifier(nm))
-                {
-                    EditorUtility.DisplayDialog("Invalid name", $"'{nm}' is not a valid C# identifier.", "OK");
-                    return;
-                }
-                if (!seen.Add(nm))
-                {
-                    EditorUtility.DisplayDialog("Duplicate name", $"'{nm}' appears multiple times.", "OK");
-                    return;
-                }
+                if (!EnumCodegenUtility.IsValidIdentifier(nm)) { EditorUtility.DisplayDialog("Invalid name", $"'{nm}' is not a valid C# identifier.", "OK"); return; }
+                if (!seen.Add(nm)) { EditorUtility.DisplayDialog("Duplicate name", $"'{nm}' appears multiple times.", "OK"); return; }
             }
 
             ReindexWorkItems_Inline();
