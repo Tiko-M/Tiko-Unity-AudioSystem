@@ -65,6 +65,13 @@ namespace Tiko.AudioSystem
 #if UNITY_EDITOR
         public struct Diff { public List<int> missing; public List<int> orphans; }
 
+        public void ReCheckAll()
+        {
+            RemoveOrphans();
+            AddMissingFromEnum();
+            SortByEnumOrder();
+        }
+
         public Diff ComputeDiff()
         {
             var diff = new Diff { missing = new List<int>(), orphans = new List<int>() };

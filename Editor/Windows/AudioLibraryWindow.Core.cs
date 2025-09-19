@@ -13,39 +13,30 @@ namespace Tiko.AudioSystem.EditorTools
         [MenuItem("Tiko/AudioSystem", priority = 1)]
         private static void Open() => GetWindow<AudioLibraryWindow>("Audio Library");
 
-        // ====== Shared State (dùng chung giữa các partial) ======
+
         private Mode _mode = Mode.SFX;
 
         // scrolls
         private Vector2 _scrollLeft;
         private Vector2 _scrollRight;
 
-        // selection caches
-        private int _selectedKey = -1;   // enum int value hiện chọn
-        private int _selectedIndex = -1; // index trong mảng enum (không filter)
 
-        // current libs/so
-        private SfxLibrary _sfxLib;
-        private BGMLibrary _bgmLib;
-        private SerializedObject _so; // SerializedObject của lib đang active
+        private int _selectedKey = -1;
+        private int _selectedIndex = -1;
 
-        // enum cache cho mode hiện tại
+
+        private EnumLibraryBase _sfxLib;
+        private EnumLibraryBase _bgmLib;
+        private SerializedObject _so;
+
+
         private string[] _enumNames = Array.Empty<string>();
         private int[] _enumKeys = Array.Empty<int>();
 
         // styles
         private GUIStyle _rowStyle;
         private GUIStyle _rowStyleSelected;
-
-        // Enum working list & file
-        private bool _enumFoldout = true;
         private List<EnumCodegenUtility.EnumItem> _workItems = new();
-        private string _enumFilePath;
-        private const string EnumNamespace = "Tiko.AudioSystem";
-        private const string ESfx = "ESFX";
-        private const string EBgm = "EBGM";
-
-        // Search đặt TRONG tab Enum
 
         private void OnEnable()
         {
@@ -77,8 +68,8 @@ namespace Tiko.AudioSystem.EditorTools
 
         private void RefreshLibraries()
         {
-            _sfxLib = FindAsset<SfxLibrary>();
-            _bgmLib = FindAsset<BGMLibrary>();
+            _sfxLib = FindAsset<EnumLibraryBase>();
+            _bgmLib = FindAsset<EnumLibraryBase>();
             BindCurrentSerializedObject();
         }
 
@@ -138,13 +129,11 @@ namespace Tiko.AudioSystem.EditorTools
             var folder = AudioEditorSettings.LibraryPath;
             AssetPathUtil.EnsureFolder(folder);
 
-            // SFX
-            _sfxLib = AssetDatabase.LoadAssetAtPath<SfxLibrary>($"{folder}/SFXLibrary.asset");
-            if (!_sfxLib) _sfxLib = AssetPathUtil.CreateScriptableIfMissing<SfxLibrary>(folder, "SFXLibrary.asset");
+            _sfxLib = AssetDatabase.LoadAssetAtPath<EnumLibraryBase>($"{folder}/SFXLibrary.asset");
+            if (!_sfxLib) _sfxLib = AssetPathUtil.CreateScriptableIfMissing<EnumLibraryBase>(folder, "SFXLibrary.asset");
 
-            // BGM
-            _bgmLib = AssetDatabase.LoadAssetAtPath<BGMLibrary>($"{folder}/BGMLibrary.asset");
-            if (!_bgmLib) _bgmLib = AssetPathUtil.CreateScriptableIfMissing<BGMLibrary>(folder, "BGMLibrary.asset");
+            _bgmLib = AssetDatabase.LoadAssetAtPath<EnumLibraryBase>($"{folder}/BGMLibrary.asset");
+            if (!_bgmLib) _bgmLib = AssetPathUtil.CreateScriptableIfMissing<EnumLibraryBase>(folder, "BGMLibrary.asset");
         }
     }
 }

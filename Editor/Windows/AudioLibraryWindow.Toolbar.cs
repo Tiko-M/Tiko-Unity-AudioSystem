@@ -18,6 +18,7 @@ namespace Tiko.AudioSystem.EditorTools
                 if (newMode != _mode)
                 {
                     _mode = newMode;
+                    _workItems.Clear();
                     BuildEnumCache();           // NEW: rebuild enum list theo mode
                     BindCurrentSerializedObject();
                     Repaint();

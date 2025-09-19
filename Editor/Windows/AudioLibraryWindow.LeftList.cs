@@ -115,12 +115,6 @@ namespace Tiko.AudioSystem.EditorTools
             }
         }
 
-        private void ReindexWorkItems_Inline()
-        {
-            for (int i = 0; i < _workItems.Count; i++)
-                _workItems[i] = new EnumCodegenUtility.EnumItem { name = _workItems[i].name, value = i };
-        }
-
         private void ApplyEnumChanges_Inline(string enumName)
         {
             var seen = new HashSet<string>();
@@ -140,18 +134,37 @@ namespace Tiko.AudioSystem.EditorTools
 
             EnumCodegenUtility.WriteEnum(enumName, _workItems);
 
-
-            AssetDatabase.Refresh();
-
             var lib = GetCurrentLib();
             if (lib != null)
             {
                 Undo.RecordObject(lib, "Audio Library Update From Enum");
-                lib.AddMissingFromEnum();
-                lib.SortByEnumOrder();
+
+                var newNames = new List<string>(_workItems.Count);
+                var newValues = new List<int>(_workItems.Count);
+                foreach (var it in _workItems)
+                {
+                    newNames.Add(it.name);
+                    newValues.Add(it.value);
+                }
+
+
+                var entries = lib.Entries as List<EnumLibraryBase.Entry>;
+
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    var e = entries[i];
+                    int idx = newValues.IndexOf(e.key);
+                    if (idx >= 0)
+                        e.keyName = newNames[idx];
+                }
+
+                lib.ReCheckAll();
                 EditorUtility.SetDirty(lib);
                 AssetDatabase.SaveAssets();
             }
+
+
+            AssetDatabase.Refresh();
 
             BuildEnumCache();
             BindCurrentSerializedObject();
