@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 
 
-namespace Tiko.AudioSystem.Editor
+namespace Tiko.AudioSystem.EditorTools
 {
     [CustomPropertyDrawer(typeof(AudioEnumPreviewAttribute))]
     public class AudioEnumPropertyDrawer : PropertyDrawer

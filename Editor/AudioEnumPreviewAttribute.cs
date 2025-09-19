@@ -2,7 +2,7 @@
 using System;
 
 
-namespace Tiko.AudioSystem.Editor
+namespace Tiko.AudioSystem.EditorTools
 {
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class AudioEnumPreviewAttribute : Attribute { }

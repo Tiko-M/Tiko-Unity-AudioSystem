@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using Tiko.AudioSystem;
 
-namespace Tiko.AudioSystem.Editor
+namespace Tiko.AudioSystem.EditorTools
 {
     [CustomEditor(typeof(EnumLibraryBase), true)]
     public class EnumLibraryEditor : UnityEditor.Editor

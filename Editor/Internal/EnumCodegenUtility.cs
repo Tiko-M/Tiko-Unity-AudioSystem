@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tiko.AudioSystem.Editor
+namespace Tiko.AudioSystem.EditorTools
 {
     internal static class EnumCodegenUtility
     {
