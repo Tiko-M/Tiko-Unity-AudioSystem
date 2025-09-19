@@ -53,6 +53,7 @@ namespace Tiko.AudioSystem.EditorTools
             RefreshLibraries();
             BuildEnumCache();
             SelectFirstKey();
+            EnsureLibrariesExist();
         }
 
         private void OnGUI()
@@ -124,19 +125,26 @@ namespace Tiko.AudioSystem.EditorTools
             Repaint();
         }
 
-        private void SetSelection(int key, int fullIndex)
-        {
-            _selectedKey = key;
-            _selectedIndex = fullIndex;
-            Repaint();
-        }
-
         private static T FindAsset<T>() where T : UnityEngine.Object
         {
             var guids = AssetDatabase.FindAssets($"t:{typeof(T).Name}");
             if (guids.Length == 0) return null;
             var path = AssetDatabase.GUIDToAssetPath(guids[0]);
             return AssetDatabase.LoadAssetAtPath<T>(path);
+        }
+
+        private void EnsureLibrariesExist()
+        {
+            var folder = AudioEditorSettings.LibraryPath;
+            AssetPathUtil.EnsureFolder(folder);
+
+            // SFX
+            _sfxLib = AssetDatabase.LoadAssetAtPath<SfxLibrary>($"{folder}/SFXLibrary.asset");
+            if (!_sfxLib) _sfxLib = AssetPathUtil.CreateScriptableIfMissing<SfxLibrary>(folder, "SFXLibrary.asset");
+
+            // BGM
+            _bgmLib = AssetDatabase.LoadAssetAtPath<BGMLibrary>($"{folder}/BGMLibrary.asset");
+            if (!_bgmLib) _bgmLib = AssetPathUtil.CreateScriptableIfMissing<BGMLibrary>(folder, "BGMLibrary.asset");
         }
     }
 }

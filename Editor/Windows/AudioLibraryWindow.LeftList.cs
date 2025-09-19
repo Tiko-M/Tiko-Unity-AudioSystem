@@ -32,8 +32,7 @@ namespace Tiko.AudioSystem.EditorTools
                     {
                         int nextVal = _workItems.Count > 0 ? _workItems[_workItems.Count - 1].value + 1 : 0;
                         _workItems.Add(new EnumCodegenUtility.EnumItem { name = "NewKey", value = nextVal });
-                        _selectedIndex = _workItems.Count - 1;
-                        _selectedKey = _workItems[_selectedIndex].value;
+
                     }
                     if (GUILayout.Button("Apply Changes", GUILayout.Width(120)))
                     {
@@ -57,16 +56,20 @@ namespace Tiko.AudioSystem.EditorTools
                     using (new EditorGUILayout.HorizontalScope(style))
                     {
                         GUILayout.Label($"[{i}]", GUILayout.Width(28));
-                        string newName = EditorGUILayout.TextField(it.name);
-                        GUILayout.FlexibleSpace();
-                        if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                        var newName = EditorGUILayout.DelayedTextField(it.name);
+                        if (newName != it.name && EnumCodegenUtility.IsValidIdentifier(newName))
                         {
-                            _workItems.RemoveAt(i);
-                            ReindexWorkItems_Inline();
-                            if (_workItems.Count == 0) { _selectedIndex = -1; _selectedKey = -1; }
-                            else { _selectedIndex = Mathf.Clamp(_selectedIndex, 0, _workItems.Count - 1); _selectedKey = _workItems[_selectedIndex].value; }
-                            i--;
-                            continue;
+                            it.name = newName;
+                            _workItems[i] = it;
+                        }
+                        GUILayout.FlexibleSpace();
+                        if (GUILayout.Button("−", GUILayout.Width(28)))
+                        {
+                            if (i >= 0 && i < _workItems.Count)
+                            {
+                                _workItems.RemoveAt(i);
+                                GUIUtility.ExitGUI();
+                            }
                         }
                         if (newName != it.name)
                             _workItems[i] = new EnumCodegenUtility.EnumItem { name = newName, value = it.value };
@@ -124,25 +127,19 @@ namespace Tiko.AudioSystem.EditorTools
             for (int i = 0; i < _workItems.Count; i++)
             {
                 var nm = _workItems[i].name;
-                if (!EnumCodegenUtility.IsValidIdentifier(nm)) { EditorUtility.DisplayDialog("Invalid name", $"'{nm}' is not a valid C# identifier.", "OK"); return; }
-                if (!seen.Add(nm)) { EditorUtility.DisplayDialog("Duplicate name", $"'{nm}' appears multiple times.", "OK"); return; }
+                if (!EnumCodegenUtility.IsValidIdentifier(nm))
+                { EditorUtility.DisplayDialog("Invalid name", $"'{nm}' is not a valid C# identifier.", "OK"); return; }
+                if (!seen.Add(nm))
+                { EditorUtility.DisplayDialog("Duplicate name", $"'{nm}' appears multiple times.", "OK"); return; }
             }
 
-            ReindexWorkItems_Inline();
 
-            if (string.IsNullOrEmpty(_enumFilePath))
-            {
-                string p = EditorUtility.SaveFilePanelInProject($"Create {enumName}.cs", enumName, "cs", "");
-                if (string.IsNullOrEmpty(p)) return;
-                var code = EnumCodegenUtility.GenerateEnumCs("Tiko.AudioSystem", enumName, _workItems);
-                if (!EnumCodegenUtility.TryWriteEnumFile(p, code)) return;
-                _enumFilePath = p;
-            }
-            else
-            {
-                var code = EnumCodegenUtility.GenerateEnumCs("Tiko.AudioSystem", enumName, _workItems);
-                if (!EnumCodegenUtility.TryWriteEnumFile(_enumFilePath, code)) return;
-            }
+            for (int i = 0; i < _workItems.Count; i++)
+                _workItems[i] = new EnumCodegenUtility.EnumItem { name = _workItems[i].name, value = i };
+
+
+            EnumCodegenUtility.WriteEnum(enumName, _workItems);
+
 
             AssetDatabase.Refresh();
 
@@ -153,12 +150,15 @@ namespace Tiko.AudioSystem.EditorTools
                 lib.AddMissingFromEnum();
                 lib.SortByEnumOrder();
                 EditorUtility.SetDirty(lib);
-                BindCurrentSerializedObject();
+                AssetDatabase.SaveAssets();
             }
 
             BuildEnumCache();
+            BindCurrentSerializedObject();
             if (!EnsureSelectionValid()) SelectFirstKey();
+            Repaint();
         }
+
     }
 }
 #endif

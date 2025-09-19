@@ -18,26 +18,41 @@ namespace Tiko.AudioSystem.EditorTools
                 if (newMode != _mode)
                 {
                     _mode = newMode;
+                    BuildEnumCache();           // NEW: rebuild enum list theo mode
                     BindCurrentSerializedObject();
-                    BuildEnumCache();
-
-                    // RESET & RELOAD LIST ENUM KHI ĐỔI TAB
-                    _workItems.Clear();
-                    _enumFilePath = null;
-                    EnsureWorkItemsLoaded();
-
-                    if (_workItems.Count > 0)
-                    {
-                        _selectedIndex = Mathf.Clamp(_selectedIndex, 0, _workItems.Count - 1);
-                        _selectedKey = _workItems[_selectedIndex].value;
-                    }
-                    else
-                    {
-                        _selectedIndex = -1;
-                        _selectedKey = -1;
-                    }
-
                     Repaint();
+                }
+
+                if (GUILayout.Button(EditorGUIUtility.IconContent("_Popup"), EditorStyles.toolbarButton, GUILayout.Width(24)))
+                {
+                    var menu = new GenericMenu();
+                    menu.AddItem(new GUIContent("Enum Path: " + AudioEditorSettings.EnumPath), false, () => { });
+                    menu.AddItem(new GUIContent("Set Enum Path..."), false, () =>
+                    {
+                        var selected = EditorUtility.OpenFolderPanel("Select Enum Folder", "Assets", "");
+                        if (!string.IsNullOrEmpty(selected) && selected.Contains("Assets"))
+                        {
+                            var rel = "Assets" + selected.Split(new[] { "Assets" }, System.StringSplitOptions.None)[1];
+                            AudioEditorSettings.EnumPath = rel.Replace("\\", "/");
+                            BuildEnumCache();
+                            Repaint();
+                        }
+                    });
+                    menu.AddSeparator("");
+                    menu.AddItem(new GUIContent("Library Path: " + AudioEditorSettings.LibraryPath), false, () => { });
+                    menu.AddItem(new GUIContent("Set Library Path..."), false, () =>
+                    {
+                        var selected = EditorUtility.OpenFolderPanel("Select Library Folder", "Assets", "");
+                        if (!string.IsNullOrEmpty(selected) && selected.Contains("Assets"))
+                        {
+                            var rel = "Assets" + selected.Split(new[] { "Assets" }, System.StringSplitOptions.None)[1];
+                            AudioEditorSettings.LibraryPath = rel.Replace("\\", "/");
+                            EnsureLibrariesExist();
+                            BindCurrentSerializedObject();
+                            Repaint();
+                        }
+                    });
+                    menu.ShowAsContext();
                 }
 
                 GUILayout.FlexibleSpace();

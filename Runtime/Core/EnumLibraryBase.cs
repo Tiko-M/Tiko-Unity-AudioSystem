@@ -1,24 +1,16 @@
-// ============================================================================
-// File: Runtime/Core/EnumLibraryBase.cs
-// Patch: Implement SortByEnumOrder() to keep entries ordered by enum value.
-// Keep everything else as-is for simplicity.
-// ============================================================================
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Tiko.AudioSystem
 {
-    /// <summary>
-    /// Base ScriptableObject storing Enum-keyed entries via int keys for robust serialization.
-    /// </summary>
     public abstract class EnumLibraryBase : ScriptableObject
     {
         [Serializable]
         public sealed class Entry
         {
-            public int key;            // robust serialization
-            public string keyName;     // display-only
+            public int key;
+            public string keyName;
             public List<AudioClip> clips = new List<AudioClip>();
             public AudioCue cue = new AudioCue();
         }
@@ -71,7 +63,6 @@ namespace Tiko.AudioSystem
         }
 
 #if UNITY_EDITOR
-        // ---------- Editor-only sync helpers ----------
         public struct Diff { public List<int> missing; public List<int> orphans; }
 
         public Diff ComputeDiff()
