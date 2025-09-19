@@ -1,11 +1,11 @@
 #if UNITY_EDITOR
-using System.IO;
-using System.Linq;
-using System.Collections.Generic;
-using UnityEditor;
 using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.UI;
 using UnityEditor.PackageManager.Requests;
+using PackageInfo = UnityEditor.PackageManager.PackageInfo;
+using System.IO;
 using UnityEngine;
+using UnityEditor;
 
 namespace Tiko.AudioSystem.EditorTools
 {
@@ -16,19 +16,29 @@ namespace Tiko.AudioSystem.EditorTools
 
         private static string GetThisPackageRoot()
         {
-            // Lấy đường dẫn asset của file .cs hiện tại → suy ra root
-            var ms = MonoScript.FromScriptableObject(ScriptableObject.CreateInstance<_Anchor>());
-            var scriptPath = AssetDatabase.GetAssetPath(ms);
-            // scriptPath: ".../AudioSystem/Editor/Internal/PackageInstaller.cs"
-            var idx = scriptPath.LastIndexOf("/Editor/");
-            var root = idx > 0 ? scriptPath.Substring(0, idx) : Path.GetDirectoryName(scriptPath).Replace("\\", "/");
-            // root: ".../AudioSystem"
-            return root;
+            // Lấy asset path của chính file script này
+            var anchor = ScriptableObject.CreateInstance<_Anchor>();
+            var ms = MonoScript.FromScriptableObject(anchor);
+            var scriptAssetPath = AssetDatabase.GetAssetPath(ms);   // ví dụ: "Packages/com.tiko.audiosystem/Editor/Internal/PackageInstaller.cs"
+            ScriptableObject.DestroyImmediate(anchor);
+
+            // Dò package info từ asset path → có resolvedPath tuyệt đối trên ổ đĩa
+            var pi = PackageInfo.FindForAssetPath(scriptAssetPath);
+            if (pi != null && !string.IsNullOrEmpty(pi.resolvedPath))
+                return pi.resolvedPath.Replace("\\", "/");
+
+            // Fallback (hiếm khi cần)
+            var idx = scriptAssetPath.LastIndexOf("/Editor/");
+            var rootRel = idx > 0 ? scriptAssetPath.Substring(0, idx) : Path.GetDirectoryName(scriptAssetPath).Replace("\\", "/");
+            // convert relative ("Packages/...") → absolute
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName.Replace("\\", "/");
+            return Path.GetFullPath(Path.Combine(projectRoot, rootRel)).Replace("\\", "/");
         }
+
 
         public static void InstallFromInstallerFolder()
         {
-            var root = GetThisPackageRoot();
+            var root = GetThisPackageRoot(); // absolute path tới gói
             var installerDir = Path.Combine(root, "Installer").Replace("\\", "/");
 
             if (!Directory.Exists(installerDir))
@@ -37,20 +47,26 @@ namespace Tiko.AudioSystem.EditorTools
                 return;
             }
 
-            var packages = Directory.GetFiles(installerDir, "*.unitypackage", SearchOption.AllDirectories);
-            if (packages.Length == 0)
+            // Tìm tất cả *.unitypackage trong Installer (đệ quy)
+            var unitypackages = Directory.GetFiles(installerDir, "*.unitypackage", SearchOption.AllDirectories);
+            if (unitypackages == null || unitypackages.Length == 0)
             {
                 EditorUtility.DisplayDialog("Installer", "Không tìm thấy file .unitypackage nào trong Installer.", "OK");
                 return;
             }
 
-            foreach (var pkg in packages)
+            // Tuỳ chọn: cho người dùng chọn gói nào muốn import (đơn giản hoá: import hết)
+            int imported = 0;
+            foreach (var pkgAbsPath in unitypackages)
             {
-                AssetDatabase.ImportPackage(pkg, true);
+                // true = hiện dialog “Import Unity Package” cho người dùng duyệt; false = im lặng
+                AssetDatabase.ImportPackage(pkgAbsPath, /*interactive*/ true);
+                imported++;
             }
 
-            EditorUtility.DisplayDialog("Installer", $"Đã import {packages.Length} unitypackage.", "OK");
+            EditorUtility.DisplayDialog("Installer", $"Đã import {imported} unitypackage từ:\n{installerDir}", "OK");
         }
+
 
     }
 }
