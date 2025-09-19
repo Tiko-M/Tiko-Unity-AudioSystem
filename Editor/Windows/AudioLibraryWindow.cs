@@ -36,6 +36,12 @@ namespace Tiko.AudioSystem.Editor
         private GUIStyle _rowStyle;
         private GUIStyle _rowStyleSelected;
 
+        private bool _enumFoldout = true;
+        private List<EnumCodegenUtility.EnumItem> _workItems = new();
+        private string _enumFilePath;
+        private const string EnumNamespace = "Tiko.AudioSystem";
+        private const string ESfx = "ESFX"; private const string EBgm = "EBGM";
+
         private void OnEnable()
         {
             BuildStyles();
@@ -43,12 +49,14 @@ namespace Tiko.AudioSystem.Editor
             EnsureSync(explicitSort: true);
             BuildEnumCache();
             SelectFirstKey();
+            RebuildEnumFromCode();
         }
 
         private void OnGUI()
         {
             HandleKeyboard();
             DrawToolbar();
+            DrawEnumCrud();
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -70,6 +78,7 @@ namespace Tiko.AudioSystem.Editor
                     EnsureSync(explicitSort: true);
                     BuildEnumCache();
                     SelectFirstKey();
+                    RebuildEnumFromCode();
                 }
 
                 GUILayout.Space(8);
@@ -455,6 +464,134 @@ namespace Tiko.AudioSystem.Editor
         {
             // No-op placeholder: IMGUI doesn't have per-control focus here,
             // but we keep the method for future inline clip list focus.
+        }
+
+        private void DrawEnumCrud()
+        {
+            using (new EditorGUILayout.VerticalScope("box"))
+            {
+                _enumFoldout = EditorGUILayout.Foldout(_enumFoldout, "Enum (Add / Rename / Delete)", true, EditorStyles.foldoutHeader);
+                if (!_enumFoldout) return;
+
+
+                var enumName = _mode == Mode.SFX ? ESfx : EBgm;
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField($"Editing enum: {enumName}", EditorStyles.boldLabel);
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("Open Script", GUILayout.Width(100)))
+                    {
+                        if (!string.IsNullOrEmpty(_enumFilePath))
+                        {
+                            var asset = AssetDatabase.LoadAssetAtPath<MonoScript>(_enumFilePath);
+                            if (asset != null) AssetDatabase.OpenAsset(asset);
+                        }
+                    }
+                }
+                if (string.IsNullOrEmpty(_enumFilePath))
+                {
+                    EditorGUILayout.HelpBox($"Cannot locate {enumName}.cs. Create it to start.", MessageType.Warning);
+                    if (GUILayout.Button("Create Default Enum File", GUILayout.Width(200)))
+                        CreateDefaultEnumFile(enumName);
+                    return;
+                }
+
+
+                // Header
+                using (new EditorGUILayout.HorizontalScope())
+                { GUILayout.Label("Name", GUILayout.Width(220)); GUILayout.Label("Value", GUILayout.Width(80)); GUILayout.FlexibleSpace(); }
+
+
+                // Rows
+                for (int i = 0; i < _workItems.Count; i++)
+                {
+                    var it = _workItems[i];
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        string newName = EditorGUILayout.TextField(it.name, GUILayout.Width(220));
+                        int newVal = EditorGUILayout.IntField(it.value, GUILayout.Width(80));
+                        GUILayout.FlexibleSpace();
+                        if (GUILayout.Button("X", GUILayout.Width(22))) { _workItems.RemoveAt(i); i--; continue; }
+                        if (newName != it.name || newVal != it.value)
+                            _workItems[i] = new EnumCodegenUtility.EnumItem { name = newName, value = newVal };
+                    }
+                }
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    if (GUILayout.Button("+ Add", GUILayout.Width(90)))
+                    {
+                        int next = _workItems.Count > 0 ? _workItems[^1].value + 1 : 0;
+                        _workItems.Add(new EnumCodegenUtility.EnumItem { name = "NewKey", value = next });
+                    }
+                    if (GUILayout.Button("Remove Duplicates", GUILayout.Width(140))) RemoveDuplicateNamesAndValues();
+                    if (GUILayout.Button("Auto-Assign Values", GUILayout.Width(150)))
+                        for (int i = 0; i < _workItems.Count; i++)
+                            _workItems[i] = new EnumCodegenUtility.EnumItem { name = _workItems[i].name, value = i };
+
+
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("Apply Changes", GUILayout.Width(140)))
+                        ApplyEnumChanges(enumName);
+                }
+
+
+                EditorGUILayout.HelpBox("Lưu ý: đổi Value có thể làm lệch mapping clip. Khuyến nghị chỉ thêm mới (append).", MessageType.Info);
+            }
+        }
+        private void RebuildEnumFromCode()
+        {
+            string enumName = _mode == Mode.SFX ? ESfx : EBgm;
+            _workItems.Clear(); _enumFilePath = null;
+            if (!EnumCodegenUtility.TryFindEnumFile(enumName, out _enumFilePath)) return;
+            var text = System.IO.File.ReadAllText(_enumFilePath);
+            if (EnumCodegenUtility.TryReadEnum(text, enumName, out var items))
+                _workItems = items;
+        }
+        private void ApplyEnumChanges(string enumName)
+        {
+            // Validate identifiers & uniqueness
+            var usedNames = new HashSet<string>(); var usedVals = new HashSet<int>();
+            for (int i = 0; i < _workItems.Count; i++)
+            {
+                var it = _workItems[i];
+                if (!EnumCodegenUtility.IsValidIdentifier(it.name))
+                { EditorUtility.DisplayDialog("Invalid name", $"'{it.name}' is not a valid C# identifier.", "OK"); return; }
+                if (!usedNames.Add(it.name)) { EditorUtility.DisplayDialog("Duplicate name", $"'{it.name}' appears multiple times.", "OK"); return; }
+                if (!usedVals.Add(it.value)) { EditorUtility.DisplayDialog("Duplicate value", $"Value {it.value} appears multiple times.", "OK"); return; }
+            }
+
+
+            _workItems.Sort((a, b) => a.value.CompareTo(b.value));
+            var code = EnumCodegenUtility.GenerateEnumCs(EnumNamespace, enumName, _workItems);
+            if (!EnumCodegenUtility.TryWriteEnumFile(_enumFilePath, code)) return;
+
+
+            AssetDatabase.Refresh();
+            EnsureSync(explicitSort: true); // cập nhật Library entries
+            BuildEnumCache(); // cập nhật cache tên/giá trị
+            if (!EnsureSelectionValid()) SelectFirstKey();
+        }
+        private void CreateDefaultEnumFile(string enumName)
+        {
+            string p = EditorUtility.SaveFilePanelInProject($"Create {enumName}.cs", enumName, "cs", "");
+            if (string.IsNullOrEmpty(p)) return;
+            var defaultItems = new List<EnumCodegenUtility.EnumItem> { new() { name = "Example", value = 0 } };
+            var code = EnumCodegenUtility.GenerateEnumCs(EnumNamespace, enumName, defaultItems);
+            if (EnumCodegenUtility.TryWriteEnumFile(p, code))
+            {
+                _enumFilePath = p; _workItems = defaultItems;
+                BuildEnumCache(); EnsureSync(explicitSort: true);
+            }
+        }
+        private void RemoveDuplicateNamesAndValues()
+        {
+            var seenNames = new HashSet<string>(); var seenVals = new HashSet<int>();
+            for (int i = _workItems.Count - 1; i >= 0; i--)
+            {
+                var it = _workItems[i];
+                if (!EnumCodegenUtility.IsValidIdentifier(it.name) || !seenNames.Add(it.name) || !seenVals.Add(it.value))
+                    _workItems.RemoveAt(i);
+            }
         }
     }
 }
