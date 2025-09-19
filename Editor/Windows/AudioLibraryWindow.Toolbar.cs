@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -19,6 +20,9 @@ namespace Tiko.AudioSystem.EditorTools
                 {
                     _mode = newMode;
                     _workItems.Clear();
+                    _enumNames = Array.Empty<string>();
+                    _enumKeys = Array.Empty<int>();
+
                     BuildEnumCache();           // NEW: rebuild enum list theo mode
                     BindCurrentSerializedObject();
                     Repaint();
