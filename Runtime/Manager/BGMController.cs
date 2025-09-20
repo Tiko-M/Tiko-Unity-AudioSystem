@@ -1,9 +1,3 @@
-// ============================================================================
-// File: Runtime/Managers/BgmController.cs
-// Namespace: Tiko.AudioSystem
-// Purpose: Two-track BGM playback with crossfade, reading from EnumLibraryBase.
-// Note: Keeps independence from AudioManager to avoid touching previous scripts.
-// ============================================================================
 using System;
 using System.Collections;
 using UnityEngine;

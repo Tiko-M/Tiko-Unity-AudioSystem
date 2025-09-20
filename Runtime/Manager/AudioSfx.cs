@@ -1,8 +1,3 @@
-// ============================================================================
-// File: Runtime/Managers/AudioSfx.cs
-// Namespace: Tiko.AudioSystem
-// Purpose: Convenience facade for SFX controls that don't require modifying Audio.cs.
-// ============================================================================
 using System;
 using UnityEngine;
 
@@ -30,6 +25,8 @@ namespace Tiko.AudioSystem
         public static void StopInt(int key, float fadeOut = 0f)
             => AM?.StopSfxByInt(key, fadeOut);
 
+        public static void Play<TEnum>(TEnum key, Vector3? worldPos = null, float volumeScale = 1f) where TEnum : struct, Enum
+                => AM?.PlaySfxGeneric(key, worldPos, volumeScale);
         public static void PlayFollow<TEnum>(TEnum key, Transform follow, float volumeScale = 1f) where TEnum : struct, Enum
             => AM?.PlaySfxFollow(key, follow, volumeScale);
     }
